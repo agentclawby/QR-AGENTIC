@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════
+   EMERGN. Design System — Tailwind v4 @theme
+   ═══════════════════════════════════════════════ */
+
+@theme {
+  /* Brand Colors */
+  --color-void-black: #0A0A0F;
+  --color-neural-white: #E8E6E3;
+  --color-pulse-cyan: #00F0FF;
+  --color-signal-violet: #8B5CF6;
+  --color-ember-orange: #FF6B35;
+  --color-ghost-gray: #2A2A35;
+
+  /* Alpha Variants */
+  --color-pulse-cyan-5: rgba(0, 240, 255, 0.05);
+  --color-pulse-cyan-10: rgba(0, 240, 255, 0.1);
+  --color-pulse-cyan-20: rgba(0, 240, 255, 0.2);
+  --color-pulse-cyan-30: rgba(0, 240, 255, 0.3);
+  --color-signal-violet-10: rgba(139, 92, 246, 0.1);
+  --color-signal-violet-20: rgba(139, 92, 246, 0.2);
+  --color-ember-orange-10: rgba(255, 107, 53, 0.1);
+  --color-ghost-gray-50: rgba(42, 42, 53, 0.5);
+
+  /* Typography */
+  --font-headline: var(--font-space-grotesk), "Space Grotesk", system-ui, sans-serif;
+  --font-body: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+
+  /* Spacing - Section */
+  --spacing-section: 120px;
+  --spacing-section-mobile: 80px;
+
+  /* Animations */
+  --animate-scanline: scanline 0.1s steps(1) infinite;
+  --animate-ticker: ticker 40s linear infinite;
+  --animate-glow-pulse: glow-pulse 2s ease-in-out infinite;
+  --animate-border-flow: border-flow 3s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-data-stream: data-stream 10s linear infinite;
+}
+
+/* ═══════════════════════════════════════════════
+   Keyframes
+   ═══════════════════════════════════════════════ */
+
+@keyframes scanline {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.15), inset 0 0 20px rgba(0, 240, 255, 0.05); }
+  50% { box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), inset 0 0 40px rgba(0, 240, 255, 0.1); }
+}
+
+@keyframes border-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glitch-slice {
+  0% { clip-path: inset(0 0 100% 0); }
+  10% { clip-path: inset(40% 0 30% 0); }
+  20% { clip-path: inset(80% 0 5% 0); }
+  30% { clip-path: inset(10% 0 60% 0); }
+  40% { clip-path: inset(50% 0 20% 0); }
+  50% { clip-path: inset(25% 0 45% 0); }
+  60% { clip-path: inset(70% 0 10% 0); }
+  70% { clip-path: inset(5% 0 80% 0); }
+  80% { clip-path: inset(60% 0 15% 0); }
+  90% { clip-path: inset(35% 0 40% 0); }
+  100% { clip-path: inset(0 0 100% 0); }
+}
+
+@keyframes data-stream {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes text-reveal {
+  0% { clip-path: inset(0 100% 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+/* ═══════════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════════ */
+
+* {
+  border-radius: 0 !important;
+}
+
+::selection {
+  background: rgba(0, 240, 255, 0.3);
+  color: #E8E6E3;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+body {
+  background: #0A0A0F;
+  color: #E8E6E3;
+  overflow-x: hidden;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════
+   Scrollbar
+   ═══════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0A0F;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2A2A35;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00F0FF;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2A2A35 #0A0A0F;
+}
+
+/* ═══════════════════════════════════════════════
+   Focus States
+   ═══════════════════════════════════════════════ */
+
+:focus-visible {
+  outline: 2px solid #00F0FF;
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Glitch Effect Utility Classes
+   ═══════════════════════════════════════════════ */
+
+.glitch-active::before,
+.glitch-active::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch-active::before {
+  color: #00F0FF;
+  animation: glitch-slice 200ms steps(1) forwards;
+  text-shadow: -2px 0 #00F0FF;
+  clip-path: inset(0 0 100% 0);
+}
+
+.glitch-active::after {
+  color: #FF6B35;
+  animation: glitch-slice 200ms steps(1) reverse forwards;
+  text-shadow: 2px 0 #FF6B35;
+  clip-path: inset(0 0 100% 0);
+}
+
+/* ═══════════════════════════════════════════════
+   Utility Classes
+   ═══════════════════════════════════════════════ */
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #00F0FF, #8B5CF6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-violet {
+  background: linear-gradient(135deg, #8B5CF6, #FF6B35);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.border-gradient {
+  border: 1px solid transparent;
+  background-image: linear-gradient(#0A0A0F, #0A0A0F), linear-gradient(135deg, #00F0FF, #8B5CF6, #00F0FF);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2), 0 0 60px rgba(0, 240, 255, 0.1);
+}
+
+.glow-violet {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2), 0 0 60px rgba(139, 92, 246, 0.1);
+}
+
+.glow-text-cyan {
+  text-shadow: 0 0 20px rgba(0, 240, 255, 0.5), 0 0 40px rgba(0, 240, 255, 0.2);
+}
