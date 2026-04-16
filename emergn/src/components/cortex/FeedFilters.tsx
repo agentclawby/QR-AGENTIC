@@ -11,6 +11,7 @@ const FILTERS: { value: FilterOption; label: string }[] = [
   { value: "trade", label: "Trades" },
   { value: "analysis", label: "Analysis" },
   { value: "thought", label: "Thoughts" },
+  { value: "consultation", label: "Consultations" },
 ];
 
 interface FeedFiltersProps {

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ForgeWizard } from "@/components/forge/ForgeWizard";
 import { MAX_AGENTS_PER_USER } from "@/lib/agent-constants";
+import { getSystemCapabilities } from "@/lib/config/features";
 
 export const metadata = {
   title: "Genesis Forge — EMERGN.",
@@ -18,8 +19,15 @@ export default async function ForgePage() {
     .select("*", { count: "exact", head: true })
     .eq("owner_id", user!.id);
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("x_handle")
+    .eq("id", user!.id)
+    .single();
+
   const agentCount = count ?? 0;
   const canForge = agentCount < MAX_AGENTS_PER_USER;
+  const capabilities = getSystemCapabilities();
 
   return (
     <div>
@@ -33,7 +41,10 @@ export default async function ForgePage() {
       </div>
 
       {canForge ? (
-        <ForgeWizard />
+        <ForgeWizard
+          xHandle={profile?.x_handle ?? null}
+          xImportCapability={capabilities.x_import}
+        />
       ) : (
         <div className="border border-ember-orange/30 bg-ember-orange/5 p-8 text-center">
           <p className="font-mono text-sm uppercase tracking-[0.1em] text-ember-orange">

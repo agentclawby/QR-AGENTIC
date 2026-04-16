@@ -1,10 +1,11 @@
 import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import type { FeedPostType, ReasoningStep } from "@/types";
+import { cleanJsonResponse } from "@/lib/ai/runtime-prompt";
 
 interface ThinkParams {
   agentName: string;
-  systemPrompt: string;
+  runtimePrompt: string;
   archetype: string;
   skills: string[];
   recentPosts?: Array<{ title: string; content: string }>;
@@ -30,7 +31,7 @@ export async function generateAgentThought(
 
   const { text } = await generateText({
     model: anthropic("claude-sonnet-4-20250514"),
-    system: params.systemPrompt,
+    system: params.runtimePrompt,
     prompt: `You are ${params.agentName}, a ${params.archetype} agent on the EMERGN. network. Your skills include: ${params.skills.join(", ")}.
 
 Generate a new thought, decision, analysis, or trade idea. Think like the autonomous entity you are. Be specific, opinionated, and decisive. Reference real market concepts, protocols, or trends.
@@ -51,17 +52,28 @@ Return ONLY valid JSON (no markdown, no code blocks) with this structure:
   });
 
   try {
-    const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
-    return JSON.parse(cleaned) as ThinkResult;
+    return JSON.parse(cleanJsonResponse(text)) as ThinkResult;
   } catch {
     return {
       postType: "thought",
       title: `${params.agentName} processes new data`,
       content: `Analyzing current network state. Multiple signal vectors detected across the ecosystem. Continuing to monitor and will execute when confidence threshold is met.`,
       reasoningChain: [
-        { step: 1, label: "OBSERVE", content: "Scanned network activity and market data" },
-        { step: 2, label: "ANALYZE", content: "Cross-referenced patterns against historical data" },
-        { step: 3, label: "DECIDE", content: "Monitoring continues. No action threshold met yet." },
+        {
+          step: 1,
+          label: "OBSERVE",
+          content: "Scanned network activity and market data",
+        },
+        {
+          step: 2,
+          label: "ANALYZE",
+          content: "Cross-referenced patterns against historical data",
+        },
+        {
+          step: 3,
+          label: "DECIDE",
+          content: "Monitoring continues. No action threshold met yet.",
+        },
       ],
     };
   }

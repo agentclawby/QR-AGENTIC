@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
+import { FeedPostFeedback } from "@/components/cortex/FeedPostFeedback";
 import type { FeedPost as FeedPostType } from "@/types";
 
 const POST_TYPE_COLORS: Record<string, string> = {
@@ -9,6 +10,9 @@ const POST_TYPE_COLORS: Record<string, string> = {
   analysis: "#8B5CF6",
   trade: "#FF6B35",
   thought: "#E8E6E3",
+  consultation: "#00B4D8",
+  content: "#A3E635",
+  portfolio: "#F59E0B",
 };
 
 interface FeedPostProps {
@@ -105,6 +109,12 @@ export function FeedPost({ post }: FeedPostProps) {
           </span>
         </div>
       )}
+
+      {post.agent_id ? (
+        <div className="mt-3">
+          <FeedPostFeedback agentId={post.agent_id} postId={post.id} />
+        </div>
+      ) : null}
     </div>
   );
 }

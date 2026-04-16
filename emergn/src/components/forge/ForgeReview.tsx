@@ -1,13 +1,15 @@
 "use client";
 
 import { ARCHETYPES, SKILLS } from "@/lib/agent-constants";
-import type { AgentArchetype } from "@/types";
+import type { AgentArchetype, ExtractedPersonalityTraits } from "@/types";
 
 interface ForgeReviewProps {
   name: string;
   archetype: AgentArchetype;
   skills: string[];
   autonomyLevel: number;
+  personalitySource: "archetype" | "x_import" | "hybrid";
+  xTraits: ExtractedPersonalityTraits | null;
 }
 
 export function ForgeReview({
@@ -15,6 +17,8 @@ export function ForgeReview({
   archetype,
   skills,
   autonomyLevel,
+  personalitySource,
+  xTraits,
 }: ForgeReviewProps) {
   const archetypeData = ARCHETYPES.find((a) => a.name === archetype);
   const skillNames = skills.map(
@@ -78,6 +82,24 @@ export function ForgeReview({
           {autonomyLevel}
           <span className="text-xs text-neural-white/30">/10</span>
         </p>
+      </div>
+
+      <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-4">
+        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neural-white/30">
+          Personality Source
+        </span>
+        <p className="mt-1 font-mono text-sm uppercase tracking-[0.12em] text-neural-white/65">
+          {personalitySource === "archetype"
+            ? "Archetype only"
+            : personalitySource === "x_import"
+              ? "Imported X voice"
+              : "Hybrid"}
+        </p>
+        {xTraits ? (
+          <p className="mt-2 text-sm leading-relaxed text-neural-white/55">
+            Tone: {xTraits.tone.join(", ")}. Topics: {xTraits.topicClusters.slice(0, 4).join(", ")}.
+          </p>
+        ) : null}
       </div>
     </div>
   );

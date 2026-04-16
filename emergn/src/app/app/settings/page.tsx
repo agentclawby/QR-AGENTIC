@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/settings/ProfileForm";
 import { LinkedAccounts } from "@/components/settings/LinkedAccounts";
+import { IntegrationReadiness } from "@/components/settings/IntegrationReadiness";
+import { getSystemCapabilities } from "@/lib/config/features";
 import type { Profile } from "@/types";
 
 export const metadata = {
@@ -19,6 +21,10 @@ export default async function SettingsPage() {
     .eq("id", user!.id)
     .single();
 
+  const capabilities = getSystemCapabilities({
+    walletAddress: profile?.wallet_address ?? null,
+  });
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-8">
@@ -33,6 +39,7 @@ export default async function SettingsPage() {
       <div className="space-y-8">
         <ProfileForm profile={profile as Profile} />
         <LinkedAccounts profile={profile as Profile} />
+        <IntegrationReadiness capabilities={capabilities} />
       </div>
     </div>
   );

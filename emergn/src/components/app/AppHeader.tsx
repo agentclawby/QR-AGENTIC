@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
+import { CreditBalance } from "@/components/payments/CreditBalance";
 import type { Profile } from "@/types";
 
 interface AppHeaderProps {
@@ -32,6 +33,7 @@ export function AppHeader({ profile }: AppHeaderProps) {
 
       {/* User info */}
       <div className="flex items-center gap-4">
+        <CreditBalance />
         <span className="font-mono text-xs uppercase tracking-[0.1em] text-neural-white/50">
           {displayName}
         </span>

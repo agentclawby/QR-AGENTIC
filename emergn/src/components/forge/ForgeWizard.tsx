@@ -9,15 +9,42 @@ import { SkillSelector } from "./SkillSelector";
 import { AutonomySlider } from "./AutonomySlider";
 import { ForgeSequence } from "./ForgeSequence";
 import { ForgeReview } from "./ForgeReview";
+import { XPersonalityImport } from "./XPersonalityImport";
 import { forgeAgent, type ForgeInput } from "@/app/app/forge/actions";
-import type { AgentArchetype } from "@/types";
+import type {
+  AgentArchetype,
+  CapabilityStatus,
+  ExtractedPersonalityTraits,
+} from "@/types";
 import { fadeInUp } from "@/lib/animations";
 
-type Step = "name" | "archetype" | "skills" | "autonomy" | "review" | "forging";
+type Step =
+  | "name"
+  | "personality"
+  | "archetype"
+  | "skills"
+  | "autonomy"
+  | "review"
+  | "forging";
 
-const STEPS: Step[] = ["name", "archetype", "skills", "autonomy", "review"];
+const STEPS: Step[] = [
+  "name",
+  "personality",
+  "archetype",
+  "skills",
+  "autonomy",
+  "review",
+];
 
-export function ForgeWizard() {
+interface ForgeWizardProps {
+  xHandle: string | null;
+  xImportCapability: CapabilityStatus;
+}
+
+export function ForgeWizard({
+  xHandle,
+  xImportCapability,
+}: ForgeWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("name");
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +55,15 @@ export function ForgeWizard() {
   const [skills, setSkills] = useState<string[]>([]);
   const [autonomyLevel, setAutonomyLevel] = useState(5);
   const [newAgentId, setNewAgentId] = useState<string | null>(null);
+  const [importXPersonality, setImportXPersonality] = useState(false);
+  const [personalityOverlay, setPersonalityOverlay] = useState("");
+  const [xTraits, setXTraits] = useState<ExtractedPersonalityTraits | null>(null);
 
   const stepIndex = STEPS.indexOf(step as Step);
   const canGoNext =
     (step === "name" && name.trim().length >= 2) ||
+    (step === "personality" &&
+      (!importXPersonality || personalityOverlay.trim().length > 0)) ||
     (step === "archetype" && archetype !== null) ||
     (step === "skills" && skills.length >= 2 && skills.length <= 4) ||
     step === "autonomy" ||
@@ -62,6 +94,8 @@ export function ForgeWizard() {
       archetype,
       skills,
       autonomyLevel,
+      personalitySource: importXPersonality ? "hybrid" : "archetype",
+      personalityOverlay: importXPersonality ? personalityOverlay : "",
     };
 
     const result = await forgeAgent(input);
@@ -184,6 +218,33 @@ export function ForgeWizard() {
             </div>
           )}
 
+          {step === "personality" && (
+            <div>
+              <h2 className="mb-2 font-headline text-xl font-bold uppercase tracking-[0.1em] text-neural-white">
+                Layer In Personality
+              </h2>
+              <p className="mb-6 font-mono text-xs text-neural-white/40">
+                Keep the archetype, then optionally add a voice overlay derived from X.
+              </p>
+              <XPersonalityImport
+                xHandle={xHandle}
+                capability={xImportCapability}
+                enabled={importXPersonality}
+                onEnabledChange={(enabled) => {
+                  setImportXPersonality(enabled);
+                  if (!enabled) {
+                    setPersonalityOverlay("");
+                    setXTraits(null);
+                  }
+                }}
+                onImported={(payload) => {
+                  setPersonalityOverlay(payload.overlay);
+                  setXTraits(payload.traits);
+                }}
+              />
+            </div>
+          )}
+
           {step === "review" && (
             <div>
               <h2 className="mb-2 font-headline text-xl font-bold uppercase tracking-[0.1em] text-neural-white">
@@ -197,6 +258,8 @@ export function ForgeWizard() {
                 archetype={archetype!}
                 skills={skills}
                 autonomyLevel={autonomyLevel}
+                personalitySource={importXPersonality ? "hybrid" : "archetype"}
+                xTraits={xTraits}
               />
             </div>
           )}

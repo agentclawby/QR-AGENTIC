@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { label: "Dashboard", href: "/app", icon: "◆" },
   { label: "Forge", href: "/app/forge", icon: "⬡" },
   { label: "Cortex", href: "/app/cortex", icon: "◈" },
+  { label: "Tokens", href: "/app/tokens", icon: "◉" },
   { label: "Leaderboard", href: "/app/leaderboard", icon: "▲" },
   { label: "Settings", href: "/app/settings", icon: "⚙" },
 ];

@@ -13,6 +13,10 @@ const forgeSchema = z.object({
   archetype: z.enum(["ORACLE", "HUNTER", "SENTINEL", "DIPLOMAT", "GHOST", "EVOLVE"]),
   skills: z.array(z.string()).min(2).max(4),
   autonomyLevel: z.number().int().min(1).max(10),
+  personalitySource: z
+    .enum(["archetype", "x_import", "hybrid"])
+    .default("archetype"),
+  personalityOverlay: z.string().default(""),
 });
 
 export type ForgeInput = z.infer<typeof forgeSchema>;
@@ -77,6 +81,8 @@ export async function forgeAgent(input: ForgeInput): Promise<ForgeResult> {
         autonomy_level: parsed.autonomyLevel,
         system_prompt: personality.systemPrompt,
         personality_summary: personality.personalitySummary,
+        personality_source: parsed.personalitySource,
+        personality_overlay: parsed.personalityOverlay,
         status: "active",
         is_genesis: isGenesis,
       })
@@ -109,6 +115,7 @@ export async function forgeAgent(input: ForgeInput): Promise<ForgeResult> {
         archetype: parsed.archetype,
         skills: parsed.skills,
         autonomy_level: parsed.autonomyLevel,
+        personality_source: parsed.personalitySource,
       },
     });
 

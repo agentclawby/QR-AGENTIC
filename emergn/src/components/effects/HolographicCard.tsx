@@ -49,8 +49,8 @@ export function HolographicCard({
       transition={{ type: "spring", stiffness: 150, damping: 20 }}
       style={{ perspective: 1000, "--glow": glowColor } as React.CSSProperties}
       className={cn(
-        "relative border border-ghost-gray/50 bg-ghost-gray/20 p-8 transition-shadow duration-300",
-        "hover:shadow-[0_0_40px_var(--glow)]",
+        "relative glass-panel-heavy p-8 transition-shadow duration-300",
+        "hover:shadow-[0_0_40px_var(--glow)] z-10",
         className
       )}
     >

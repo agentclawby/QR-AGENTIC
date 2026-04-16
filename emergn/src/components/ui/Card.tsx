@@ -19,9 +19,9 @@ export function Card({ children, className, glowColor, hover = true }: CardProps
   return (
     <div
       className={cn(
-        "border border-ghost-gray/50 bg-ghost-gray/20 p-6 transition-all duration-300",
+        "glass-panel p-6 transition-all duration-300",
         hover && glowColor && glowMap[glowColor],
-        hover && !glowColor && "hover:border-ghost-gray",
+        hover && !glowColor && "hover:border-ghost-gray hover:shadow-[0_0_15px_rgba(232,230,227,0.05)]",
         className
       )}
     >

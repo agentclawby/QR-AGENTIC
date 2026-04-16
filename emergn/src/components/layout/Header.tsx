@@ -15,10 +15,11 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <DataTicker />
-      <nav className="border-b border-ghost-gray/50 bg-void-black/90 backdrop-blur-md">
+      <nav className="glass-panel-heavy border-b-pulse-cyan/10">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <a href="#hero" className="relative z-50">
+          <a href="#hero" className="relative z-50 group">
             <Logo />
+            <div className="absolute inset-0 z-[-1] animate-glow-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </a>
 
           {/* Desktop Nav */}

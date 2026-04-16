@@ -21,11 +21,11 @@ export function Button({
 
   const variants = {
     primary:
-      "border border-pulse-cyan bg-pulse-cyan/10 text-pulse-cyan hover:bg-pulse-cyan/20 hover:shadow-[0_0_30px_rgba(0,240,255,0.3)]",
+      "border border-pulse-cyan bg-pulse-cyan/10 text-pulse-cyan hover:bg-pulse-cyan/20 hover:shadow-[0_0_30px_rgba(0,240,255,0.4),inset_0_0_15px_rgba(0,240,255,0.2)] hover:-translate-y-0.5",
     secondary:
-      "border border-ghost-gray bg-ghost-gray/50 text-neural-white hover:border-signal-violet hover:text-signal-violet hover:shadow-[0_0_30px_rgba(139,92,246,0.2)]",
+      "border border-ghost-gray bg-ghost-gray/50 text-neural-white hover:border-signal-violet hover:text-signal-violet hover:shadow-[0_0_30px_rgba(139,92,246,0.3),inset_0_0_15px_rgba(139,92,246,0.1)] hover:-translate-y-0.5",
     ghost:
-      "text-neural-white/50 hover:text-neural-white",
+      "text-neural-white/50 hover:text-neural-white hover:-translate-y-0.5",
   };
 
   const sizes = {

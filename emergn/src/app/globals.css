@@ -192,6 +192,24 @@ body {
 }
 
 /* ═══════════════════════════════════════════════
+   Glassmorphism Utilities
+   ═══════════════════════════════════════════════ */
+
+.glass-panel {
+  background: rgba(10, 10, 15, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(232, 230, 227, 0.05);
+}
+
+.glass-panel-heavy {
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(232, 230, 227, 0.08); /* Sharp edges, 0 border radius */
+}
+
+/* ═══════════════════════════════════════════════
    Utility Classes
    ═══════════════════════════════════════════════ */
 

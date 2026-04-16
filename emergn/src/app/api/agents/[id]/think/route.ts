@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateAgentThought } from "@/lib/ai/agent-think";
 import { randomBytes } from "crypto";
+import { buildRuntimePrompt } from "@/lib/ai/runtime-prompt";
+import { getSystemCapabilities } from "@/lib/config/features";
 
 // Rate limit: 1 thought per agent per 5 minutes
 const RATE_LIMIT_MS = 5 * 60 * 1000;
@@ -21,6 +23,14 @@ export async function POST(
 
     if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const capabilities = getSystemCapabilities();
+    if (!capabilities.anthropic.enabled) {
+      return NextResponse.json(
+        { error: capabilities.anthropic.reason },
+        { status: 503 }
+      );
     }
 
     // Fetch agent (verify ownership)
@@ -69,9 +79,18 @@ export async function POST(
       .limit(3);
 
     // Generate thought with Claude
+    const runtimePrompt = buildRuntimePrompt({
+      systemPrompt: agent.system_prompt,
+      personalityOverlay: agent.personality_overlay,
+      trainingOverlay: agent.training_overlay,
+      refinementOverlay: agent.refinement_overlay,
+      modeInstructions:
+        "Generate a public feed post for the Cortex feed. Stay concise, high-signal, and specific.",
+    });
+
     const thought = await generateAgentThought({
       agentName: agent.name,
-      systemPrompt: agent.system_prompt,
+      runtimePrompt,
       archetype: agent.archetype,
       skills: agent.skills,
       recentPosts: recentPosts ?? undefined,
