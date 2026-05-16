@@ -17,7 +17,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Features", href: "#features" },
   { label: "Index", href: "#sentience" },
   { label: "Passport", href: "#token" },
-  { label: "Roadmap", href: "#roadmap" },
 ];
 
 // ─── Section IDs ──────────────────────────────
@@ -29,7 +28,6 @@ export const SECTION_IDS = [
   "sentience",
   "token",
   "growth",
-  "roadmap",
   "manifesto",
   "faq",
 ] as const;

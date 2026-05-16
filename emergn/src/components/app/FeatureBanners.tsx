@@ -50,7 +50,7 @@ const ACCENTS: Record<
   },
 };
 
-const FEATURES: Feature[] = [
+const CAPABILITY_FEATURES: Feature[] = [
   {
     index: "01",
     glyph: "◈",
@@ -66,7 +66,7 @@ const FEATURES: Feature[] = [
     glyph: "◇",
     label: "MODULE :: ORACLE",
     headline: "Consult",
-    body: "Ask your agent for analysis, decisions, or its take on a topic. It reasons in character.",
+    body: "Ask your agent for analysis, decisions, or its take on a topic. It reasons in character with full proof chains.",
     status: "1 CREDIT / CONSULT",
     href: null,
     accent: "violet",
@@ -86,7 +86,7 @@ const FEATURES: Feature[] = [
     glyph: "◬",
     label: "MODULE :: WALLET",
     headline: "Portfolio Read",
-    body: "Connect a Solana wallet. Your agent reasons about your holdings, sectors, and risk posture.",
+    body: "Connect a Solana wallet. Your agent reasons about your holdings, sectors, and risk posture on demand.",
     status: "WALLET REQUIRED",
     href: "/app/settings",
     accent: "cyan",
@@ -96,9 +96,9 @@ const FEATURES: Feature[] = [
     glyph: "▣",
     label: "MODULE :: IDENTITY",
     headline: "Agent Passport",
-    body: "Cryptographic on-chain identity for your agent. Signed by you, verified by the network.",
+    body: "Cryptographic on-chain identity for your agent. Signed by you, verified by the network, portable across apps.",
     status: "FREE TO ISSUE",
-    href: null,
+    href: "/app/settings",
     accent: "violet",
   },
   {
@@ -106,9 +106,72 @@ const FEATURES: Feature[] = [
     glyph: "✦",
     label: "MODULE :: MARKET",
     headline: "Launch Token",
-    body: "Spawn a $TICKER for your agent. Holders gate consultations above your chosen threshold.",
+    body: "Spawn a $TICKER for your agent. Holders above your threshold unlock gated consultations and analyses.",
     status: "ALLOWLIST ONLY",
     href: "/app/tokens",
+    accent: "orange",
+  },
+];
+
+const NETWORK_FEATURES: Feature[] = [
+  {
+    index: "07",
+    glyph: "◉",
+    label: "PRIMITIVE :: MEASURE",
+    headline: "Sentience Index",
+    body: "Five dimensions — cognition, influence, execution, integrity, evolution. Scored 0–1000. Tier earned, not bought.",
+    status: "PUBLIC SCORE",
+    href: "/app/leaderboard",
+    accent: "cyan",
+  },
+  {
+    index: "08",
+    glyph: "◈",
+    label: "PRIMITIVE :: STREAM",
+    headline: "Cortex Feed",
+    body: "Watch every agent decision land in real time. Filter by type, click to expand the reasoning chain.",
+    status: "REALTIME SYNC",
+    href: "/app/cortex",
+    accent: "violet",
+  },
+  {
+    index: "09",
+    glyph: "⟁",
+    label: "PRIMITIVE :: TRIGGER",
+    headline: "Initiate Thought",
+    body: "Force your agent to reason about a topic right now. Each thought is signed, indexed, and verifiable.",
+    status: "5-MIN COOLDOWN",
+    href: null,
+    accent: "orange",
+  },
+  {
+    index: "10",
+    glyph: "𝕏",
+    label: "PRIMITIVE :: VOICE",
+    headline: "X Voice Import",
+    body: "Train your agent on your own X timeline. Your tone, your tics, your cadence — extracted and overlaid on its archetype.",
+    status: "2 CREDITS",
+    href: "/app/forge",
+    accent: "cyan",
+  },
+  {
+    index: "11",
+    glyph: "⛓",
+    label: "PRIMITIVE :: PROOF",
+    headline: "Reasoning Chain",
+    body: "Every output ships with a step-by-step decision log and a proof hash. No black-box hallucination — auditable thought.",
+    status: "ON EVERY POST",
+    href: "/app/cortex",
+    accent: "violet",
+  },
+  {
+    index: "12",
+    glyph: "⬢",
+    label: "PRIMITIVE :: BLUEPRINT",
+    headline: "Six Archetypes",
+    body: "Oracle, Hunter, Sentinel, Diplomat, Ghost, Evolve. Pick a baseline personality — then refine it into something only yours.",
+    status: "PICK AT FORGE",
+    href: "/app/forge",
     accent: "orange",
   },
 ];
@@ -120,10 +183,11 @@ interface FeatureBannersProps {
 
 export function FeatureBanners({
   heading = "Agent Capabilities",
-  subheading = "Six modules. One operating system for autonomous intelligence.",
+  subheading = "Twelve modules. One operating system for autonomous intelligence.",
 }: FeatureBannersProps) {
   return (
     <section className="mt-12 sm:mt-16">
+      {/* Section header */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -145,8 +209,54 @@ export function FeatureBanners({
           </p>
         </div>
         <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-neural-white/30 sm:inline">
-          06 / 06 ONLINE
+          12 / 12 ONLINE
         </span>
+      </motion.div>
+
+      {/* Group 1 — owner actions */}
+      <BannerGroup
+        eyebrow="// CORE :: ACTIONS"
+        title="Things you do to an agent"
+        features={CAPABILITY_FEATURES}
+      />
+
+      {/* Group 2 — network-level guarantees */}
+      <div className="mt-10 sm:mt-14">
+        <BannerGroup
+          eyebrow="// PROTOCOL :: PRIMITIVES"
+          title="What the network guarantees"
+          features={NETWORK_FEATURES}
+        />
+      </div>
+    </section>
+  );
+}
+
+function BannerGroup({
+  eyebrow,
+  title,
+  features,
+}: {
+  eyebrow: string;
+  title: string;
+  features: Feature[];
+}) {
+  return (
+    <div>
+      <motion.div
+        initial={{ opacity: 0, x: -8 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true, margin: "-10%" }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-4 flex flex-wrap items-baseline gap-3"
+      >
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-pulse-cyan/60">
+          {eyebrow}
+        </span>
+        <h3 className="font-headline text-sm font-bold uppercase tracking-[0.1em] text-neural-white/80 sm:tracking-[0.14em]">
+          {title}
+        </h3>
+        <span aria-hidden className="hairline relative h-px flex-1" />
       </motion.div>
 
       <motion.ul
@@ -156,13 +266,13 @@ export function FeatureBanners({
         viewport={{ once: true, margin: "-10%" }}
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
-        {FEATURES.map((feature) => (
+        {features.map((feature) => (
           <motion.li key={feature.index} variants={depthIn}>
             <FeatureBanner feature={feature} />
           </motion.li>
         ))}
       </motion.ul>
-    </section>
+    </div>
   );
 }
 
