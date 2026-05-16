@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Button } from "@/components/ui/Button";
+import { buildSolanaAuthMessage } from "@/lib/auth/solana-auth";
 import bs58 from "bs58";
 
 export function WalletConnectButton() {
@@ -20,15 +21,22 @@ export function WalletConnectButton() {
 
     try {
       // 1. Get nonce from server
-      const nonceRes = await fetch("/api/auth/siws/nonce");
+      const nonceRes = await fetch("/api/auth/siws/nonce", {
+        cache: "no-store",
+      });
+      if (!nonceRes.ok) {
+        throw new Error("Failed to request a wallet nonce");
+      }
       const { nonce } = await nonceRes.json();
 
       // 2. Construct SIWS message
       const message = new TextEncoder().encode(
-        `Sign in to EMERGN.\n\n` +
-        `Wallet: ${publicKey.toBase58()}\n` +
-        `Nonce: ${nonce}\n` +
-        `Issued At: ${new Date().toISOString()}`
+        buildSolanaAuthMessage({
+          intent: "sign-in",
+          publicKey: publicKey.toBase58(),
+          nonce,
+          origin: window.location.origin,
+        })
       );
 
       // 3. Sign the message
@@ -49,7 +57,18 @@ export function WalletConnectButton() {
       const verifyData = await verifyRes.json();
 
       if (!verifyRes.ok) {
-        throw new Error(verifyData.error || "Verification failed");
+        // The verify route returns 500 with "Failed to create wallet user"
+        // when Supabase Admin API is unreachable. Surface a clearer
+        // diagnosis so the user knows where to look.
+        const reason = verifyData.error || "Verification failed";
+        const isAdminFailure =
+          /Failed to create wallet user/i.test(reason) ||
+          /Failed to generate session/i.test(reason);
+        throw new Error(
+          isAdminFailure
+            ? "Auth server unreachable. The Supabase project may be paused or the URL/keys are wrong — check the server logs and your .env.local."
+            : reason
+        );
       }
 
       // Use the verification URL to establish the Supabase session
@@ -59,7 +78,17 @@ export function WalletConnectButton() {
         window.location.href = "/app";
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Wallet sign-in failed");
+      const message = err instanceof Error ? err.message : "Wallet sign-in failed";
+      // Native fetch failures (DNS / network) — surface the Supabase hint.
+      const isNetwork =
+        /fetch failed/i.test(message) ||
+        /failed to fetch/i.test(message) ||
+        /networkerror/i.test(message);
+      setError(
+        isNetwork
+          ? "Auth server unreachable. The Supabase project may be paused — check NEXT_PUBLIC_SUPABASE_URL."
+          : message
+      );
       setLoading(false);
     }
   }, [publicKey, signMessage]);
@@ -87,6 +116,7 @@ export function WalletConnectButton() {
         className="w-full"
         onClick={handleClick}
         disabled={loading}
+        loading={loading}
       >
         <svg
           className="mr-3 h-4 w-4"
@@ -100,7 +130,7 @@ export function WalletConnectButton() {
           <rect x="2" y="6" width="20" height="12" rx="0" />
           <path d="M22 10H18C16.9 10 16 10.9 16 12C16 13.1 16.9 14 18 14H22" />
         </svg>
-        {loading ? "Verifying..." : "Connect Wallet"}
+        {loading ? "Verifying signal..." : "Initialize wallet"}
       </Button>
       {error && (
         <p className="mt-2 font-mono text-[10px] text-ember-orange">{error}</p>

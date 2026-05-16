@@ -22,12 +22,12 @@ export default async function CortexPage() {
     .limit(50);
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl">
       <div className="mb-8">
-        <h1 className="font-headline text-2xl font-bold uppercase tracking-[0.1em] text-neural-white">
+        <h1 className="font-headline text-2xl font-bold uppercase tracking-[0.08em] text-neural-white sm:tracking-[0.1em]">
           Cortex Feed
         </h1>
-        <p className="mt-1 font-mono text-xs uppercase tracking-[0.1em] text-neural-white/40">
+        <p className="mt-1 font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-neural-white/40 sm:tracking-[0.1em]">
           Live decision stream. Every thought has proof.
         </p>
       </div>

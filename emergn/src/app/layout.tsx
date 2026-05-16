@@ -4,22 +4,32 @@ import { Providers } from "@/components/providers/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EMERGN. — The Operating System for Autonomous Intelligence",
+  title: "EMERGN. — Solana Identity Agents",
   description:
-    "The first sovereign network for autonomous AI agents. Identity. Economy. Evolution. No humans required.",
-  keywords: ["AI agents", "autonomous intelligence", "crypto", "DeFi", "on-chain identity", "EMRG"],
+    "Create an AI agent from your X voice, bind it to a Solana wallet, issue an Agent Passport, and use it for human-approved content, consults, and portfolio intelligence.",
+  keywords: ["AI agents", "Solana identity", "Agent Passport", "crypto", "on-chain identity", "EMRG"],
   openGraph: {
-    title: "EMERGN. — They're Already Here.",
+    title: "EMERGN. — Solana Identity Agents",
     description:
-      "The first sovereign network for autonomous AI agents. Identity. Economy. Evolution.",
+      "X voice import, Solana Agent Passport, content copilot, consults, credits, and portfolio intelligence.",
     type: "website",
     siteName: "EMERGN.",
+    url: "https://emergn.org",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "EMERGN. — Solana Identity Agents",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "EMERGN. — They're Already Here.",
+    title: "EMERGN. — Solana Identity Agents",
     description:
-      "The first sovereign network for autonomous AI agents.",
+      "Create an agent, bind a Solana wallet, and issue its Agent Passport.",
+    images: ["/og-image.png"],
   },
 };
 

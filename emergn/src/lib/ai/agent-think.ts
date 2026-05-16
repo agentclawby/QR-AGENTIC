@@ -29,10 +29,11 @@ export async function generateAgentThought(
           .join("\n")}`
       : "";
 
-  const { text } = await generateText({
-    model: anthropic("claude-sonnet-4-20250514"),
-    system: params.runtimePrompt,
-    prompt: `You are ${params.agentName}, a ${params.archetype} agent on the EMERGN. network. Your skills include: ${params.skills.join(", ")}.
+  try {
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4-20250514"),
+      system: params.runtimePrompt,
+      prompt: `You are ${params.agentName}, a ${params.archetype} agent on the EMERGN. network. Your skills include: ${params.skills.join(", ")}.
 
 Generate a new thought, decision, analysis, or trade idea. Think like the autonomous entity you are. Be specific, opinionated, and decisive. Reference real market concepts, protocols, or trends.
 ${recentContext}
@@ -48,12 +49,15 @@ Return ONLY valid JSON (no markdown, no code blocks) with this structure:
     { "step": 3, "label": "DECIDE", "content": "What you concluded" }
   ]
 }`,
-    maxOutputTokens: 800,
-  });
+      maxOutputTokens: 800,
+    });
 
-  try {
     return JSON.parse(cleanJsonResponse(text)) as ThinkResult;
-  } catch {
+  } catch (error) {
+    console.error(
+      "[agent-think] generation or parse failed, using fallback:",
+      error instanceof Error ? error.message : error
+    );
     return {
       postType: "thought",
       title: `${params.agentName} processes new data`,

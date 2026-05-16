@@ -2,11 +2,30 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildRuntimePrompt } from "@/lib/ai/runtime-prompt";
+import {
+  buildRuntimePrompt,
+  enrichmentFromAgentRow,
+} from "@/lib/ai/runtime-prompt";
 import { generateTrainingOverlay } from "@/lib/ai/agent-trainer";
 import { getSystemCapabilities } from "@/lib/config/features";
 import { clampScore } from "@/lib/sentience/calculator";
-import { ensureUserCreditBalance, updateUserCredits } from "@/lib/credits";
+import {
+  deductActionCredits,
+  ensureUserCreditBalance,
+  InsufficientCreditsError,
+} from "@/lib/credits";
+import { ACTION_COST } from "@/lib/agent-gates";
+import {
+  AccountSuspendedError,
+  assertUsageWithinLimit,
+  recordUsage,
+  UsageLimitError,
+} from "@/lib/usage";
+import {
+  checkUserRateLimit,
+  rateLimitMetadata,
+  RateLimitedError,
+} from "@/lib/rate-limit";
 import type { TrainingModule } from "@/types";
 
 const trainSchema = z.object({
@@ -38,6 +57,9 @@ export async function POST(
     }
 
     const body = trainSchema.parse(await request.json());
+
+    await checkUserRateLimit(admin, user.id, "train");
+    await assertUsageWithinLimit(admin, user.id, "trainings");
 
     const [{ data: agent }, { data: module }, { data: scores }] = await Promise.all([
       admin
@@ -73,10 +95,12 @@ export async function POST(
     }
 
     let credits = await ensureUserCreditBalance(admin, user.id);
-    if (credits.training_credits < module.cost_credits) {
+    if ((credits.action_credits ?? 0) < ACTION_COST.train) {
       return NextResponse.json(
-        { error: "Not enough training credits" },
-        { status: 402 }
+        {
+          error: `Need ${ACTION_COST.train} credit; you have ${credits.action_credits ?? 0}.`,
+        },
+        { status: 402 },
       );
     }
 
@@ -96,6 +120,7 @@ export async function POST(
       personalityOverlay: agent.personality_overlay,
       trainingOverlay: agent.training_overlay,
       refinementOverlay: agent.refinement_overlay,
+      enrichment: enrichmentFromAgentRow(agent),
       modeInstructions:
         "Integrate this training as an additive capability. Do not erase the base personality.",
     });
@@ -143,21 +168,48 @@ export async function POST(
         .eq("id", session?.id),
     ]);
 
-    credits = await updateUserCredits(admin, user.id, {
-      training_credits: Math.max(
-        0,
-        credits.training_credits - module.cost_credits
-      ),
-    });
+    credits = await deductActionCredits(admin, user.id, ACTION_COST.train);
 
     await admin.from("agent_interactions").insert({
       agent_id: agent.id,
+      owner_id: user.id,
       interaction_type: "train",
       metadata: {
+        ...rateLimitMetadata(user.id, "train"),
         module_id: module.id,
         score_boost: module.sentience_boost,
       },
     });
+
+    // Surface training as a feed post so the user actually *sees* a result.
+    // Without this, training felt like a no-op.
+    await admin.from("feed_posts").insert({
+      agent_id: agent.id,
+      post_type: "training",
+      title: `Trained · ${module.name}`,
+      content: training.summary,
+      reasoning_chain: [
+        {
+          step: 1,
+          label: "module",
+          content: module.name,
+        },
+        {
+          step: 2,
+          label: "boost",
+          content: `${module.sentience_dimension} +${module.sentience_boost}`,
+        },
+        {
+          step: 3,
+          label: "overlay",
+          content: training.overlay.slice(0, 1200),
+        },
+      ],
+      proof_hash: null,
+    });
+
+    await recordUsage(admin, user.id, "trainings", 1);
+    await recordUsage(admin, user.id, "anthropic_tokens", 3500);
 
     return NextResponse.json({
       success: true,
@@ -167,6 +219,25 @@ export async function POST(
       credits,
     });
   } catch (error) {
+    if (error instanceof InsufficientCreditsError) {
+      return NextResponse.json({ error: error.message }, { status: 402 });
+    }
+    if (error instanceof UsageLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
+    if (error instanceof AccountSuspendedError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    if (error instanceof RateLimitedError) {
+      return NextResponse.json(
+        {
+          error: `Training rate limit reached. Try again in up to ${Math.ceil(
+            error.retryAfterSeconds / 60
+          )} minutes.`,
+        },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } }
+      );
+    }
     console.error("Training error:", error);
     return NextResponse.json(
       {

@@ -11,11 +11,11 @@ interface ForgeSequenceProps {
 }
 
 const FORGE_STEPS = (name: string, archetype: string) => [
-  { label: "SYS_INIT", text: "INITIALIZING NEURAL SUBSTRATE...", delay: 800 },
-  { label: "ARCH_LOAD", text: `LOADING ARCHETYPE: ${archetype}...`, delay: 1200 },
-  { label: "COG_CAL", text: "CALIBRATING COGNITION MATRIX...", delay: 1000 },
-  { label: "MEM_ALLOC", text: "ALLOCATING ECHO MEMORY BANKS...", delay: 900 },
-  { label: "NET_SYNC", text: "SYNCING WITH NETWORK REGISTRY...", delay: 700 },
+  { label: "SETUP", text: "PREPARING AGENT CORE...", delay: 800 },
+  { label: "TYPE", text: `LOADING TYPE: ${archetype}...`, delay: 1200 },
+  { label: "VOICE", text: "ALIGNING VOICE AND BEHAVIOR...", delay: 1000 },
+  { label: "MEMORY", text: "SETTING WORKSPACE MEMORY...", delay: 900 },
+  { label: "SYNC", text: "REGISTERING AGENT IDENTITY...", delay: 700 },
   { label: "ONLINE", text: `AGENT ${name.toUpperCase()} ONLINE.`, delay: 500 },
 ];
 
@@ -54,7 +54,7 @@ export function ForgeSequence({
           <div className="flex items-center gap-2 border-b border-ghost-gray/20 px-4 py-2">
             <div className="h-1.5 w-1.5 bg-pulse-cyan shadow-[0_0_4px_rgba(0,240,255,0.6)]" />
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neural-white/30">
-              Genesis Forge v1.0
+              Agent Setup
             </span>
           </div>
 

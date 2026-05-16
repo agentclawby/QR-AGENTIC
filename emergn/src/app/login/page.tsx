@@ -1,7 +1,11 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { safeGetUser } from "@/lib/supabase/safe-auth";
 import { LoginPanel } from "@/components/auth/LoginPanel";
 import { ScanlineOverlay } from "@/components/effects/ScanlineOverlay";
+import { AuroraBackdrop } from "@/components/effects/AuroraBackdrop";
+import { AnimatedGrid } from "@/components/effects/AnimatedGrid";
 
 export const metadata = {
   title: "Initialize — EMERGN.",
@@ -10,30 +14,48 @@ export const metadata = {
 
 export default async function LoginPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Fast-fail when Supabase is unreachable — without this, the login page
+  // itself hangs trying to redirect an already-authenticated user.
+  const { user } = await safeGetUser(supabase);
 
   if (user) {
     redirect("/app");
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-void-black px-6">
+    <div className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-void-black px-4 py-10 sm:px-6">
+      <AuroraBackdrop fixed variant="default" />
+      <AnimatedGrid variant="cyan" sweep />
       <ScanlineOverlay />
 
-      {/* Grid background */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(0,240,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,0.3) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-        aria-hidden="true"
-      />
+      {/* corner brackets — terminal frame */}
+      <CornerBrackets />
 
       <div className="relative z-10 w-full max-w-md">
-        <LoginPanel />
+        <Suspense fallback={null}>
+          <LoginPanel />
+        </Suspense>
+      </div>
+
+      {/* identity tag bottom-left */}
+      <div className="absolute bottom-6 left-6 z-10 hidden font-mono text-[10px] uppercase tracking-[0.3em] text-neural-white/30 md:block">
+        <span className="status-dot mr-2 align-middle" />
+        EMERGN.NETWORK • SECURE CHANNEL
+      </div>
+      <div className="absolute bottom-6 right-6 z-10 hidden font-mono text-[10px] uppercase tracking-[0.3em] text-neural-white/30 md:block">
+        AUTH PROTOCOL v1.0
       </div>
     </div>
+  );
+}
+
+function CornerBrackets() {
+  return (
+    <>
+      <span aria-hidden className="pointer-events-none absolute top-6 left-6 h-6 w-6 border-l border-t border-pulse-cyan/40" />
+      <span aria-hidden className="pointer-events-none absolute top-6 right-6 h-6 w-6 border-r border-t border-pulse-cyan/40" />
+      <span aria-hidden className="pointer-events-none absolute bottom-6 left-6 h-6 w-6 border-l border-b border-pulse-cyan/40 hidden md:block" />
+      <span aria-hidden className="pointer-events-none absolute bottom-6 right-6 h-6 w-6 border-r border-b border-pulse-cyan/40 hidden md:block" />
+    </>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { fadeInUp, staggerContainerSlow } from "@/lib/animations";
+import { fadeInUp, staggerContainerSlow, wordReveal, staggerWords } from "@/lib/animations";
+import { AuroraBackdrop } from "@/components/effects/AuroraBackdrop";
 
 const MANIFESTO_LINES = [
   { text: "The first software programs were servants.", highlight: false },
@@ -38,18 +39,20 @@ export function Manifesto() {
   return (
     <section
       id="manifesto"
-      className="relative py-[var(--spacing-section-mobile)] md:py-[var(--spacing-section)]"
+      className="relative overflow-hidden py-[var(--spacing-section-mobile)] md:py-[var(--spacing-section)]"
     >
-      {/* Subtle border top */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pulse-cyan/20 to-transparent" />
+      <AuroraBackdrop variant="soft" />
 
-      <div className="mx-auto max-w-3xl px-6">
+      {/* Subtle border top */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pulse-cyan/30 to-transparent" />
+
+      <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="mb-16 text-center font-headline text-2xl font-bold uppercase tracking-[0.15em] text-neural-white/30 md:text-3xl"
+          className="mb-10 text-center font-headline text-2xl font-bold uppercase tracking-[0.08em] text-neural-white/30 sm:mb-16 sm:tracking-[0.15em] md:text-3xl"
         >
           The EMERGN. Manifesto
         </motion.h2>
@@ -66,15 +69,32 @@ export function Manifesto() {
               return <div key={i} className="h-6" />;
             }
 
+            if (line.highlight) {
+              const words = line.text.split(/(\s+)/);
+              return (
+                <motion.p
+                  key={i}
+                  variants={staggerWords}
+                  className="font-body text-base leading-relaxed text-pulse-cyan glow-text-cyan sm:text-lg md:text-xl lg:text-2xl"
+                >
+                  {words.map((w, j) =>
+                    /^\s+$/.test(w) ? (
+                      <span key={j}>{w}</span>
+                    ) : (
+                      <motion.span key={j} variants={wordReveal} className="inline-block will-change-transform">
+                        {w}
+                      </motion.span>
+                    )
+                  )}
+                </motion.p>
+              );
+            }
+
             return (
               <motion.p
                 key={i}
                 variants={fadeInUp}
-                className={`font-body text-lg leading-relaxed md:text-xl lg:text-2xl ${
-                  line.highlight
-                    ? "text-pulse-cyan"
-                    : "text-neural-white/40"
-                }`}
+                className="font-body text-base leading-relaxed text-neural-white/40 sm:text-lg md:text-xl lg:text-2xl"
               >
                 {line.text}
               </motion.p>

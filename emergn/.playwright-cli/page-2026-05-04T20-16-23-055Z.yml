@@ -1,0 +1,71 @@
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#hero"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "EMERGN." [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: EMERGN.
+      - navigation [ref=e9]:
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - link "◆ Dashboard" [active] [ref=e12] [cursor=pointer]:
+              - /url: /app
+              - generic [ref=e13]: ◆
+              - generic [ref=e14]: Dashboard
+          - listitem [ref=e15]:
+            - link "⬡ Create Agent" [ref=e16] [cursor=pointer]:
+              - /url: /app/forge
+              - generic [ref=e17]: ⬡
+              - generic [ref=e18]: Create Agent
+          - listitem [ref=e19]:
+            - link "◈ Cortex" [ref=e20] [cursor=pointer]:
+              - /url: /app/cortex
+              - generic [ref=e21]: ◈
+              - generic [ref=e22]: Cortex
+          - listitem [ref=e23]:
+            - link "▲ Leaderboard" [ref=e24] [cursor=pointer]:
+              - /url: /app/leaderboard
+              - generic [ref=e25]: ▲
+              - generic [ref=e26]: Leaderboard
+          - listitem [ref=e27]:
+            - link "⚙ Settings" [ref=e28] [cursor=pointer]:
+              - /url: /app/settings
+              - generic [ref=e29]: ⚙
+              - generic [ref=e30]: Settings
+      - generic [ref=e34]: Network Online
+    - generic [ref=e35]:
+      - banner [ref=e36]:
+        - generic [ref=e39]: Live · Realtime sync
+        - generic [ref=e40]:
+          - generic [ref=e41]: Premium 0 · Training 0
+          - generic [ref=e42]: EV3J...sVJU
+          - button "Sign Out" [ref=e43] [cursor=pointer]:
+            - generic [ref=e44]: Sign Out
+      - main [ref=e231]:
+        - generic [ref=e232]:
+          - generic [ref=e233]:
+            - generic [ref=e234]:
+              - heading "Your Agents. ▍" [level=1] [ref=e235]
+              - paragraph [ref=e236]:
+                - text: 0 deployed · 0 active · sentience
+                - generic [ref=e238]: "122"
+            - link "+ Create Agent" [ref=e239] [cursor=pointer]:
+              - /url: /app/forge
+              - generic [ref=e240]: + Create Agent
+          - link "NOVA NEXUS Genesis ORACLE Sentience 136/1000 AWARE active" [ref=e243] [cursor=pointer]:
+            - /url: /app/agent/2c2c4c44-1c93-4998-8ecc-804828b75631
+            - generic [ref=e244]:
+              - generic [ref=e246]:
+                - generic [ref=e247]:
+                  - heading "NOVA" [level=3] [ref=e248]
+                  - paragraph [ref=e249]: NEXUS
+                - generic [ref=e251]: Genesis
+              - generic [ref=e254]: ORACLE
+              - generic [ref=e255]:
+                - generic [ref=e256]:
+                  - text: Sentience
+                  - paragraph [ref=e257]: 136/1000
+                - generic [ref=e259]: AWARE
+              - generic [ref=e262]: active
+  - alert [ref=e222]: Dashboard — EMERGN.

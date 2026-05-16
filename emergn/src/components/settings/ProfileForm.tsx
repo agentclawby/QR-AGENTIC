@@ -38,14 +38,14 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   };
 
   return (
-    <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-6">
-      <h2 className="mb-4 font-headline text-sm font-bold uppercase tracking-[0.15em] text-neural-white">
+    <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-5 sm:p-6">
+      <h2 className="mb-4 font-headline text-sm font-bold uppercase tracking-[0.1em] text-neural-white sm:tracking-[0.15em]">
         Profile
       </h2>
 
       <div className="space-y-4">
         <div>
-          <label className="mb-1 block font-mono text-[10px] uppercase tracking-[0.15em] text-neural-white/30">
+          <label className="mb-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-neural-white/30 sm:tracking-[0.15em]">
             Username
           </label>
           <input
@@ -58,7 +58,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         </div>
 
         <div>
-          <label className="mb-1 block font-mono text-[10px] uppercase tracking-[0.15em] text-neural-white/30">
+          <label className="mb-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-neural-white/30 sm:tracking-[0.15em]">
             Display Name
           </label>
           <input
@@ -87,6 +87,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           size="md"
           onClick={handleSave}
           disabled={saving}
+          className="w-full sm:w-auto"
         >
           {saving ? "Saving..." : "Save Changes"}
         </Button>

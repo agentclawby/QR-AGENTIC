@@ -50,17 +50,17 @@ export function TokenInfo({ agentId }: TokenInfoProps) {
   if (!data) return null;
 
   return (
-    <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-6">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="font-headline text-sm font-bold uppercase tracking-[0.15em] text-neural-white">
+    <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-5 sm:p-6">
+      <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row">
+        <div className="min-w-0">
+          <h2 className="font-headline text-sm font-bold uppercase tracking-[0.1em] text-neural-white sm:tracking-[0.15em]">
             Agent Token
           </h2>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/35">
+          <p className="mt-1 break-words font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/35 sm:tracking-[0.12em]">
             {data.token.token_name} (${data.token.token_symbol})
           </p>
         </div>
-        <span className="border border-pulse-cyan/30 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-pulse-cyan">
+        <span className="shrink-0 border border-pulse-cyan/30 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]">
           {data.token.status}
         </span>
       </div>
@@ -72,7 +72,7 @@ export function TokenInfo({ agentId }: TokenInfoProps) {
         <TokenMetric label="Holders" value={formatCount(data.market.holders)} />
       </div>
 
-      <div className="mt-4 space-y-2 font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/35">
+      <div className="mt-4 space-y-2 font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/35 sm:tracking-[0.12em]">
         <p>Mint: {shorten(data.token.token_mint)}</p>
         {data.token.launch_tx ? <p>Launch Tx: {shorten(data.token.launch_tx)}</p> : null}
         <p>Gate Threshold: {data.tokenGateThreshold.toLocaleString()}</p>
@@ -84,7 +84,7 @@ export function TokenInfo({ agentId }: TokenInfoProps) {
 function TokenMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-ghost-gray/15 bg-void-black p-4">
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/30">
+      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/30 sm:tracking-[0.12em]">
         {label}
       </p>
       <p className="mt-1 font-mono text-base text-neural-white/75">{value}</p>

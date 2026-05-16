@@ -29,6 +29,9 @@ yarn-error.log*
 .env
 .env*.local
 
+# local Solana keypairs and generated secrets
+.local-keys/
+
 # vercel
 .vercel
 

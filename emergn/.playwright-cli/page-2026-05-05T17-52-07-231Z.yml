@@ -1,0 +1,25 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#hero"
+  - generic [ref=e3]:
+    - generic [ref=e6]:
+      - generic [ref=e8]:
+        - img "EMERGN." [ref=e9]
+        - generic [ref=e10]: EMERGN.
+      - paragraph [ref=e11]: Network online
+      - heading "Initialize. ▍" [level=1] [ref=e13]
+      - paragraph [ref=e14]: Connect to enter the network
+      - generic [ref=e15]:
+        - button "Connect with X" [ref=e16] [cursor=pointer]:
+          - generic [ref=e17]:
+            - img [ref=e18]
+            - text: Connect with X
+        - generic [ref=e22]: or
+        - button "Initialize wallet" [ref=e25] [cursor=pointer]:
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - text: Initialize wallet
+      - paragraph [ref=e30]: Your identity begins here.
+    - generic [ref=e31]: EMERGN.NETWORK • SECURE CHANNEL
+    - generic [ref=e33]: AUTH PROTOCOL v1.0
+  - alert [ref=e34]

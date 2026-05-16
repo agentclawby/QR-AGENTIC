@@ -16,9 +16,18 @@ export async function maybeRefineAgentFromFeedback(options: {
   }
 
   if (agent.last_refinement_at) {
+    const parsedCooldown = Number.parseFloat(
+      process.env.REFINEMENT_COOLDOWN_HOURS ?? ""
+    );
+    const cooldownHours =
+      Number.isFinite(parsedCooldown) && parsedCooldown > 0
+        ? parsedCooldown
+        : process.env.NODE_ENV === "production"
+          ? 24
+          : 1;
     const msSinceLast =
       Date.now() - new Date(agent.last_refinement_at).getTime();
-    if (msSinceLast < 24 * 60 * 60 * 1000) {
+    if (msSinceLast < cooldownHours * 60 * 60 * 1000) {
       return { refined: false, reason: "cooldown" as const };
     }
   }

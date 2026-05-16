@@ -3,11 +3,30 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildRuntimePrompt } from "@/lib/ai/runtime-prompt";
+import {
+  buildRuntimePrompt,
+  enrichmentFromAgentRow,
+} from "@/lib/ai/runtime-prompt";
 import { generateAgentConsultation } from "@/lib/ai/agent-consult";
 import { getSystemCapabilities } from "@/lib/config/features";
-import { ensureUserCreditBalance, updateUserCredits } from "@/lib/credits";
+import {
+  deductActionCredits,
+  ensureUserCreditBalance,
+  InsufficientCreditsError,
+} from "@/lib/credits";
+import { ACTION_COST } from "@/lib/agent-gates";
+import {
+  AccountSuspendedError,
+  assertUsageWithinLimit,
+  recordUsage,
+  UsageLimitError,
+} from "@/lib/usage";
 import { getSplTokenBalanceForOwner } from "@/lib/solana/token-balance";
+import {
+  checkUserRateLimit,
+  rateLimitMetadata,
+  RateLimitedError,
+} from "@/lib/rate-limit";
 
 const consultSchema = z.object({
   query: z.string().trim().min(8).max(1000),
@@ -39,6 +58,9 @@ export async function POST(
     }
 
     const body = consultSchema.parse(await request.json());
+
+    await checkUserRateLimit(admin, user.id, "consult");
+    await assertUsageWithinLimit(admin, user.id, "consults");
 
     const [{ data: profile }, { data: agent }] = await Promise.all([
       supabase
@@ -74,31 +96,14 @@ export async function POST(
 
       if (tokenUnlocked) {
         accessMode = "token_holder";
-      } else if (body.isPremium || credits.free_consults_remaining <= 0) {
-        if (credits.premium_credits <= 0) {
-          return NextResponse.json(
-            {
-              error:
-                gateThreshold > 0n
-                  ? "This agent requires token holdings or premium credits for consultation access."
-                  : "No free consultations remaining. Premium credits are required.",
-            },
-            { status: 402 }
-          );
-        }
-
-        credits = await updateUserCredits(admin, user.id, {
-          premium_credits: Math.max(0, credits.premium_credits - 1),
-        });
-        accessMode = "premium_credit";
       } else {
-        credits = await updateUserCredits(admin, user.id, {
-          free_consults_remaining: Math.max(
-            0,
-            credits.free_consults_remaining - 1
-          ),
-        });
-        accessMode = "free_consult";
+        // Single-pool model: any non-token consultation costs 1 credit.
+        credits = await deductActionCredits(
+          admin,
+          user.id,
+          ACTION_COST.consult,
+        );
+        accessMode = "credit";
       }
     }
 
@@ -107,6 +112,7 @@ export async function POST(
       personalityOverlay: agent.personality_overlay,
       trainingOverlay: agent.training_overlay,
       refinementOverlay: agent.refinement_overlay,
+      enrichment: enrichmentFromAgentRow(agent),
       modeInstructions:
         "Respond as a public consultation. Be useful, concise, and credible. This output will be publicly visible.",
     });
@@ -148,18 +154,22 @@ export async function POST(
       user_id: user.id,
       query: body.query,
       response_post_id: post.id,
-      is_premium: accessMode !== "free_consult",
+      is_premium: accessMode === "credit",
     });
 
     await admin.from("agent_interactions").insert({
       agent_id: agent.id,
       interaction_type: "consult",
       metadata: {
+        ...rateLimitMetadata(user.id, "consult"),
         post_id: post.id,
-        user_id: user.id,
         access_mode: accessMode,
       },
     });
+
+    await recordUsage(admin, user.id, "consults", 1);
+    // Approx 3k tokens per consult (Claude Sonnet 4 input+output blend).
+    await recordUsage(admin, user.id, "anthropic_tokens", 3000);
 
     return NextResponse.json({
       success: true,
@@ -168,6 +178,25 @@ export async function POST(
       credits,
     });
   } catch (error) {
+    if (error instanceof InsufficientCreditsError) {
+      return NextResponse.json({ error: error.message }, { status: 402 });
+    }
+    if (error instanceof UsageLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
+    if (error instanceof AccountSuspendedError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    if (error instanceof RateLimitedError) {
+      return NextResponse.json(
+        {
+          error: `Consultation rate limit reached. Try again in up to ${Math.ceil(
+            error.retryAfterSeconds / 60
+          )} minutes.`,
+        },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } }
+      );
+    }
     console.error("Consultation error:", error);
     return NextResponse.json(
       {

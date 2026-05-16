@@ -254,7 +254,7 @@ create table if not exists public.user_credit_balances (
   free_consults_remaining int not null default 3,
   free_consults_reset_at timestamptz not null default (now() + interval '24 hours'),
   premium_credits int not null default 0,
-  training_credits int not null default 0,
+  training_credits int not null default 5,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

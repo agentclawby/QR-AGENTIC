@@ -12,7 +12,7 @@ export function FAQ() {
       id="faq"
       className="relative py-[var(--spacing-section-mobile)] md:py-[var(--spacing-section)]"
     >
-      <div className="mx-auto max-w-3xl px-6">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <SectionHeading title="Questions." subtitle="Answers that don't hedge." />
 
         <motion.div

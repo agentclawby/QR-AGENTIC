@@ -14,13 +14,6 @@ export interface Tier {
   color: string;
 }
 
-export interface TokenAllocation {
-  name: string;
-  percentage: number;
-  vesting: string;
-  color: string;
-}
-
 export interface TokenUtility {
   function: string;
   usage: string;
@@ -79,6 +72,8 @@ export type CapabilityId =
   | "anthropic"
   | "x_import"
   | "portfolio_analysis"
+  | "agent_passport"
+  | "passport_image"
   | "payments"
   | "token_launch";
 
@@ -89,6 +84,20 @@ export interface CapabilityStatus {
 
 export type SystemCapabilities = Record<CapabilityId, CapabilityStatus>;
 
+export interface SystemHealth {
+  db: "ok" | "error";
+  profileExists: boolean;
+  creditsExist: boolean;
+  migrationsApplied: {
+    profiles: boolean;
+    agents: boolean;
+    sentience_scores: boolean;
+    user_credit_balances: boolean;
+    agent_passports: boolean;
+  };
+  notes: string[];
+}
+
 export interface Profile {
   id: string;
   username: string | null;
@@ -96,6 +105,10 @@ export interface Profile {
   avatar_url: string | null;
   x_handle: string | null;
   wallet_address: string | null;
+  role?: "user" | "admin";
+  suspended_at?: string | null;
+  suspended_reason?: string | null;
+  usage_quota_overrides?: Record<string, number> | null;
   created_at: string;
   updated_at: string;
 }
@@ -126,6 +139,15 @@ export interface Agent {
   personality_overlay: string;
   training_overlay: string;
   refinement_overlay: string;
+  // User-authored persona enrichment (migration 012). All fields default to
+  // empty string / empty array on agents that pre-date the migration.
+  backstory: string;
+  beliefs: string;
+  opinions: string;
+  quirks: string;
+  do_not_say: string;
+  style_exemplars: string[];
+  persona_updated_at: string | null;
   avatar_seed: string;
   status: AgentStatus;
   is_genesis: boolean;
@@ -133,6 +155,8 @@ export interface Agent {
   token_gate_threshold: number;
   training_level: number;
   last_refinement_at: string | null;
+  passport_image_url: string | null;
+  passport_image_status: "pending" | "generating" | "ready" | "failed";
   created_at: string;
   updated_at: string;
 }
@@ -199,6 +223,7 @@ export type InteractionType =
   | "feedback"
   | "payment"
   | "token_launch"
+  | "passport_issue"
   | "refine";
 
 export interface AgentInteraction {
@@ -269,7 +294,7 @@ export interface AgentDraft {
   id: string;
   agent_id: string;
   user_id: string;
-  draft_type: "tweet" | "thread";
+  draft_type: "tweet" | "thread" | "reply";
   prompt: string;
   content: string;
   metadata: Record<string, unknown>;
@@ -319,12 +344,56 @@ export interface AgentFeedback {
 export interface UserCreditBalance {
   id: string;
   user_id: string;
+  // Unified pool (V1 single-credit model)
+  action_credits: number;
+  action_credits_earned_today: number;
+  action_credits_earned_reset_at: string;
+  last_action_at: string | null;
+  // Legacy (kept for read-back during transition; no route writes them)
   free_consults_remaining: number;
   free_consults_reset_at: string;
   premium_credits: number;
   training_credits: number;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface CreditClaim {
+  id: string;
+  user_id: string;
+  draft_id: string;
+  tweet_id: string;
+  tweet_url: string;
+  similarity: number;
+  status: "approved" | "rejected" | "manual_review";
+  reason: string | null;
+  created_at: string;
+}
+
+export interface UserUsageDaily {
+  user_id: string;
+  day: string;
+  x_calls: number;
+  anthropic_tokens: number;
+  consults: number;
+  trainings: number;
+}
+
+export type AgentPassportStatus = "issued" | "revoked";
+
+export interface AgentPassport {
+  id: string;
+  agent_id: string;
+  owner_id: string;
+  owner_wallet: string;
+  passport_uid: string;
+  proof_hash: string;
+  status: AgentPassportStatus;
+  issued_tx_signature: string | null;
+  metadata_uri: string | null;
+  passport_image_url: string | null;
+  issued_at: string;
+  updated_at: string;
 }
 
 export type TokenLaunchPlatform = "pumpportal" | "direct_spl";

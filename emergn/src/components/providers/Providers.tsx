@@ -6,7 +6,6 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 import { clusterApiUrl } from "@solana/web3.js";
 
 // Import wallet adapter default styles (overridden by our global border-radius: 0)
@@ -24,7 +23,9 @@ export function Providers({ children }: ProvidersProps) {
     []
   );
 
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  // Phantom and other modern wallets register themselves via the wallet-standard.
+  // Passing them explicitly causes a deprecation warning.
+  const wallets = useMemo(() => [], []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

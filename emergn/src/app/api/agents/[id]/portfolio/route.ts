@@ -6,6 +6,11 @@ import { buildRuntimePrompt } from "@/lib/ai/runtime-prompt";
 import { getSystemCapabilities } from "@/lib/config/features";
 import { buildWalletPortfolioSnapshot } from "@/lib/portfolio/analyzer";
 import { generatePortfolioAnalysis } from "@/lib/ai/agent-portfolio";
+import {
+  checkUserRateLimit,
+  rateLimitMetadata,
+  RateLimitedError,
+} from "@/lib/rate-limit";
 
 const portfolioSchema = z.object({
   walletAddress: z.string().trim().optional(),
@@ -36,6 +41,8 @@ export async function POST(
     }
 
     const body = portfolioSchema.parse(await request.json().catch(() => ({})));
+
+    await checkUserRateLimit(admin, user.id, "portfolio");
 
     const [{ data: agent }, { data: profile }] = await Promise.all([
       admin.from("agents").select("*").eq("id", agentId).single(),
@@ -97,7 +104,7 @@ export async function POST(
       agent_id: agent.id,
       interaction_type: "portfolio",
       metadata: {
-        user_id: user.id,
+        ...rateLimitMetadata(user.id, "portfolio"),
         wallet_address: walletAddress,
       },
     });
@@ -109,6 +116,16 @@ export async function POST(
       analysis,
     });
   } catch (error) {
+    if (error instanceof RateLimitedError) {
+      return NextResponse.json(
+        {
+          error: `Portfolio analysis rate limit reached. Try again in up to ${Math.ceil(
+            error.retryAfterSeconds / 60
+          )} minutes.`,
+        },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } }
+      );
+    }
     console.error("Portfolio analysis error:", error);
     return NextResponse.json(
       {

@@ -10,12 +10,14 @@ import { ViralGrowth } from "@/components/sections/ViralGrowth";
 import { Roadmap } from "@/components/sections/Roadmap";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { FAQ } from "@/components/sections/FAQ";
+import { CursorSpotlight } from "@/components/effects/CursorSpotlight";
 
 export default function Home() {
   return (
     <>
+      <CursorSpotlight />
       <Header />
-      <main>
+      <main className="relative">
         <Hero />
         <Civilization />
         <Pillars />

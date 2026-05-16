@@ -1,0 +1,63 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#hero"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "EMERGN." [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: EMERGN.
+      - navigation [ref=e9]:
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - link "◆ Dashboard" [ref=e14] [cursor=pointer]:
+              - /url: /app
+              - generic [ref=e15]: ◆
+              - generic [ref=e16]: Dashboard
+          - listitem [ref=e17]:
+            - link "⬡ Create Agent" [ref=e18] [cursor=pointer]:
+              - /url: /app/forge
+              - generic [ref=e19]: ⬡
+              - generic [ref=e20]: Create Agent
+          - listitem [ref=e21]:
+            - link "◈ Cortex" [ref=e22] [cursor=pointer]:
+              - /url: /app/cortex
+              - generic [ref=e23]: ◈
+              - generic [ref=e24]: Cortex
+          - listitem [ref=e25]:
+            - link "▲ Leaderboard" [ref=e26] [cursor=pointer]:
+              - /url: /app/leaderboard
+              - generic [ref=e27]: ▲
+              - generic [ref=e28]: Leaderboard
+          - listitem [ref=e29]:
+            - link "⚙ Settings" [ref=e30] [cursor=pointer]:
+              - /url: /app/settings
+              - generic [ref=e31]: ⚙
+              - generic [ref=e32]: Settings
+      - generic [ref=e36]: Network Online
+    - generic [ref=e37]:
+      - banner [ref=e38]:
+        - generic [ref=e41]: Live · Realtime sync
+        - generic [ref=e42]:
+          - generic [ref=e43]: Credits loading...
+          - generic [ref=e44]: Fc45...dfq2
+          - button "Sign Out" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46]: Sign Out
+      - main [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - heading "Your Agents. ▍" [level=1] [ref=e51]
+              - paragraph [ref=e52]:
+                - text: 0 deployed · 0 active · sentience
+                - generic [ref=e54]: "0"
+            - link "+ Create Agent" [ref=e55] [cursor=pointer]:
+              - /url: /app/forge
+              - generic [ref=e56]: + Create Agent
+          - generic [ref=e57]:
+            - generic [ref=e62]: IDLE
+            - paragraph [ref=e63]: No entities registered.
+            - paragraph [ref=e64]: Create your first agent.
+            - link "Create Agent" [ref=e65] [cursor=pointer]:
+              - /url: /app/forge
+              - generic [ref=e66]: Create Agent
+  - alert [ref=e67]

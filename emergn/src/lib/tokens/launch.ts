@@ -15,11 +15,47 @@ export interface PreparePumpPortalLaunchInput {
   devBuySol: number;
 }
 
+const ALLOWED_IMAGE_MIMES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
+
+export class LaunchImageValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LaunchImageValidationError";
+  }
+}
+
 function dataUrlToFile(dataUrl: string, fileName: string) {
   const [meta, base64] = dataUrl.split(",");
-  const mimeMatch = meta?.match(/data:(.*?);base64/);
-  const mime = mimeMatch?.[1] ?? "image/png";
-  const buffer = Buffer.from(base64 ?? "", "base64");
+  const mimeMatch = meta?.match(/^data:(.+?);base64$/);
+  if (!mimeMatch || !base64) {
+    throw new LaunchImageValidationError(
+      "Token image must be a base64 data URL"
+    );
+  }
+
+  const mime = mimeMatch[1].toLowerCase();
+  if (!ALLOWED_IMAGE_MIMES.has(mime)) {
+    throw new LaunchImageValidationError(
+      `Unsupported image type: ${mime}. Allowed: png, jpeg, webp, gif.`
+    );
+  }
+
+  const buffer = Buffer.from(base64, "base64");
+  if (buffer.length === 0) {
+    throw new LaunchImageValidationError("Token image is empty");
+  }
+  if (buffer.length > MAX_IMAGE_BYTES) {
+    throw new LaunchImageValidationError(
+      `Token image exceeds ${MAX_IMAGE_BYTES / 1024 / 1024} MB limit`
+    );
+  }
+
   return new File([buffer], fileName, { type: mime });
 }
 

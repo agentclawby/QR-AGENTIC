@@ -18,10 +18,11 @@ export async function generateTrainingOverlay(options: {
   runtimePrompt: string;
   module: TrainingModule;
 }): Promise<TrainingContextResult> {
-  const { text } = await generateText({
-    model: anthropic("claude-sonnet-4-20250514"),
-    system: options.runtimePrompt,
-    prompt: `You are refining an AI agent with a new training module.
+  try {
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4-20250514"),
+      system: options.runtimePrompt,
+      prompt: `You are refining an AI agent with a new training module.
 
 Agent: ${options.agentName}
 Module: ${options.module.name}
@@ -33,12 +34,15 @@ Return ONLY valid JSON:
   "overlay": "A concise overlay that adds this capability without overriding the core personality.",
   "summary": "One short sentence describing what improved."
 }`,
-    maxOutputTokens: 900,
-  });
+      maxOutputTokens: 900,
+    });
 
-  try {
     return JSON.parse(cleanJsonResponse(text)) as TrainingContextResult;
-  } catch {
+  } catch (error) {
+    console.error(
+      "[agent-trainer] training generation or parse failed, using fallback:",
+      error instanceof Error ? error.message : error
+    );
     return {
       overlay: `${options.module.name}: Apply this capability when it improves signal quality. Stay consistent with the agent's voice and judgment while drawing on ${options.module.description.toLowerCase()}.`,
       summary: `Applied ${options.module.name} training.`,
@@ -58,10 +62,11 @@ export async function generateRefinementOverlay(options: {
     })
     .join("\n");
 
-  const { text } = await generateText({
-    model: anthropic("claude-sonnet-4-20250514"),
-    system: options.runtimePrompt,
-    prompt: `You are refining an agent based on user feedback.
+  try {
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4-20250514"),
+      system: options.runtimePrompt,
+      prompt: `You are refining an agent based on user feedback.
 
 Agent: ${options.agentName}
 
@@ -75,12 +80,15 @@ Return ONLY valid JSON:
   "overlay": "A concise behavior overlay focused on reducing repeated weaknesses and improving usefulness.",
   "summary": "One short sentence explaining what changed."
 }`,
-    maxOutputTokens: 900,
-  });
+      maxOutputTokens: 900,
+    });
 
-  try {
     return JSON.parse(cleanJsonResponse(text)) as RefinementResult;
-  } catch {
+  } catch (error) {
+    console.error(
+      "[agent-trainer] refinement generation or parse failed, using fallback:",
+      error instanceof Error ? error.message : error
+    );
     return {
       overlay:
         "Tighten conclusions, avoid repeating weak or generic statements, surface clearer caveats when confidence is low, and lead with the most actionable insight first.",

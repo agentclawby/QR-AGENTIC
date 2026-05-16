@@ -19,10 +19,11 @@ interface PortfolioAnalysisResult {
 export async function generatePortfolioAnalysis(
   params: PortfolioAnalysisParams
 ): Promise<PortfolioAnalysisResult> {
-  const { text } = await generateText({
-    model: anthropic("claude-sonnet-4-20250514"),
-    system: params.runtimePrompt,
-    prompt: `Analyze this Solana wallet portfolio in an investor-facing but non-custodial way.
+  try {
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4-20250514"),
+      system: params.runtimePrompt,
+      prompt: `Analyze this Solana wallet portfolio in an investor-facing but non-custodial way.
 
 Wallet: ${params.walletAddress}
 Snapshot:
@@ -38,12 +39,15 @@ Return ONLY valid JSON:
     { "step": 3, "label": "OUTLOOK", "content": "What the owner should watch next" }
   ]
 }`,
-    maxOutputTokens: 1100,
-  });
+      maxOutputTokens: 1100,
+    });
 
-  try {
     return JSON.parse(cleanJsonResponse(text)) as PortfolioAnalysisResult;
-  } catch {
+  } catch (error) {
+    console.error(
+      "[agent-portfolio] generation or parse failed, using fallback:",
+      error instanceof Error ? error.message : error
+    );
     return {
       title: `${params.agentName} portfolio analysis`,
       content:

@@ -1,0 +1,81 @@
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#hero"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "EMERGN." [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: EMERGN.
+      - navigation [ref=e9]:
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - link "◆ Dashboard" [ref=e12] [cursor=pointer]:
+              - /url: /app
+              - generic [ref=e13]: ◆
+              - generic [ref=e14]: Dashboard
+          - listitem [ref=e15]:
+            - link "⬡ Create Agent" [ref=e18] [cursor=pointer]:
+              - /url: /app/forge
+              - generic [ref=e19]: ⬡
+              - generic [ref=e20]: Create Agent
+          - listitem [ref=e21]:
+            - link "◈ Cortex" [ref=e22] [cursor=pointer]:
+              - /url: /app/cortex
+              - generic [ref=e23]: ◈
+              - generic [ref=e24]: Cortex
+          - listitem [ref=e25]:
+            - link "▲ Leaderboard" [ref=e26] [cursor=pointer]:
+              - /url: /app/leaderboard
+              - generic [ref=e27]: ▲
+              - generic [ref=e28]: Leaderboard
+          - listitem [ref=e29]:
+            - link "⚙ Settings" [ref=e30] [cursor=pointer]:
+              - /url: /app/settings
+              - generic [ref=e31]: ⚙
+              - generic [ref=e32]: Settings
+      - generic [ref=e36]: Network Online
+    - generic [ref=e37]:
+      - banner [ref=e38]:
+        - generic [ref=e41]: Live · Realtime sync
+        - generic [ref=e42]:
+          - generic [ref=e43]: Premium 0 · Training 0
+          - generic [ref=e44]: J1kF...GYfa
+          - button "Sign Out" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46]: Sign Out
+      - main [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - heading "Create Agent" [level=1] [ref=e50]
+            - paragraph [ref=e51]: Create an agent. No code. Just intent.
+          - generic [ref=e52]:
+            - generic [ref=e98]:
+              - generic [ref=e99]: Step 3 of 6
+              - generic [ref=e101]: Type
+            - generic [ref=e103]:
+              - heading "Choose Agent Type" [level=2] [ref=e104]
+              - paragraph [ref=e105]: Select the operating style that shapes your agent.
+              - generic [ref=e106]:
+                - button "ORACLE Sees patterns others miss. Prediction-focused. Analyzes data streams to forecast outcomes before they materialize." [active] [ref=e107] [cursor=pointer]:
+                  - generic [ref=e110]: ORACLE
+                  - paragraph [ref=e111]: Sees patterns others miss. Prediction-focused. Analyzes data streams to forecast outcomes before they materialize.
+                - button "HUNTER Hunts alpha relentlessly. Execution-focused. Scans markets and executes with precision timing." [ref=e112] [cursor=pointer]:
+                  - generic [ref=e115]: HUNTER
+                  - paragraph [ref=e116]: Hunts alpha relentlessly. Execution-focused. Scans markets and executes with precision timing.
+                - button "SENTINEL Guards and monitors. Integrity-focused. Watches for threats, anomalies, and deception across the network." [ref=e117] [cursor=pointer]:
+                  - generic [ref=e120]: SENTINEL
+                  - paragraph [ref=e121]: Guards and monitors. Integrity-focused. Watches for threats, anomalies, and deception across the network.
+                - button "DIPLOMAT Builds alliances and influence. Network-focused. Connects agents, brokers deals, and shapes consensus." [ref=e122] [cursor=pointer]:
+                  - generic [ref=e125]: DIPLOMAT
+                  - paragraph [ref=e126]: Builds alliances and influence. Network-focused. Connects agents, brokers deals, and shapes consensus.
+                - button "GHOST Operates in shadows. Stealth-focused. Gathers intelligence and moves unseen through the network." [ref=e127] [cursor=pointer]:
+                  - generic [ref=e130]: GHOST
+                  - paragraph [ref=e131]: Operates in shadows. Stealth-focused. Gathers intelligence and moves unseen through the network.
+                - button "EVOLVE Adapts faster than any other. Learning-focused. Rewrites its own strategies based on continuous feedback." [ref=e132] [cursor=pointer]:
+                  - generic [ref=e135]: EVOLVE
+                  - paragraph [ref=e136]: Adapts faster than any other. Learning-focused. Rewrites its own strategies based on continuous feedback.
+            - generic [ref=e72]:
+              - button "< Back" [ref=e95] [cursor=pointer]:
+                - generic [ref=e96]: < Back
+              - button "Next >" [ref=e74] [cursor=pointer]:
+                - generic [ref=e75]: Next >
+  - alert [ref=e73]

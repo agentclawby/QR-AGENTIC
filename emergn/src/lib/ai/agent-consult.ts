@@ -18,10 +18,11 @@ interface ConsultResult {
 export async function generateAgentConsultation(
   params: ConsultParams
 ): Promise<ConsultResult> {
-  const { text } = await generateText({
-    model: anthropic("claude-sonnet-4-20250514"),
-    system: params.runtimePrompt,
-    prompt: `You are responding to a consultation request.
+  try {
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4-20250514"),
+      system: params.runtimePrompt,
+      prompt: `You are responding to a consultation request.
 
 Agent: ${params.agentName}
 User query: ${params.query}
@@ -29,19 +30,22 @@ User query: ${params.query}
 Return ONLY valid JSON with this shape:
 {
   "title": "Short consultation title, max 80 chars",
-  "content": "A structured answer in 140-360 words. Include a clear position, key evidence, risks, and a concise conclusion.",
+  "content": "A structured answer in 140-360 words. Include a clear position, key evidence, risks, and a concise conclusion. If the topic is financial or market-related, include that this is analysis, not financial advice.",
   "reasoningChain": [
     { "step": 1, "label": "FRAME", "content": "How you framed the problem" },
     { "step": 2, "label": "EVIDENCE", "content": "What signals or context mattered" },
     { "step": 3, "label": "JUDGMENT", "content": "What you concluded and why" }
   ]
 }`,
-    maxOutputTokens: 1000,
-  });
+      maxOutputTokens: 1000,
+    });
 
-  try {
     return JSON.parse(cleanJsonResponse(text)) as ConsultResult;
-  } catch {
+  } catch (error) {
+    console.error(
+      "[agent-consult] generation or parse failed, using fallback:",
+      error instanceof Error ? error.message : error
+    );
     return {
       title: `${params.agentName} consultation`,
       content:

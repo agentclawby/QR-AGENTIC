@@ -1,0 +1,25 @@
+{
+  "name": "emergn-demo-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remotion compositions for the EMERGN. demo and teaser video.",
+  "scripts": {
+    "dev": "remotion studio",
+    "build:teaser": "remotion render Teaser out/emergn-teaser.mp4 --concurrency=2",
+    "build:demo": "remotion render Demo out/emergn-demo.mp4 --concurrency=2",
+    "build:all": "npm run build:teaser && npm run build:demo",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.300",
+    "@remotion/google-fonts": "^4.0.300",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.300"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

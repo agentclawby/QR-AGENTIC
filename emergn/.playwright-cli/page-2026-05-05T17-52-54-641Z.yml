@@ -1,0 +1,12 @@
+- main [ref=e4]:
+  - generic [ref=e6]:
+    - img [ref=e8]
+    - generic [ref=e13]:
+      - generic [ref=e14]: To use this App you have to be logged in to X.
+      - button "Log in" [ref=e15] [cursor=pointer]:
+        - generic [ref=e18]: Log in
+    - generic [ref=e21]:
+      - text: Learn more about 3rd party app access in the
+      - link "help centre" [ref=e22] [cursor=pointer]:
+        - /url: https://help.x.com/managing-your-account/connect-or-revoke-access-to-third-party-apps
+      - text: .

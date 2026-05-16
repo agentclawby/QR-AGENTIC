@@ -1,0 +1,80 @@
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#hero"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "EMERGN." [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: EMERGN.
+      - navigation [ref=e9]:
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - link "◆ Dashboard" [ref=e12] [cursor=pointer]:
+              - /url: /app
+              - generic [ref=e13]: ◆
+              - generic [ref=e14]: Dashboard
+          - listitem [ref=e15]:
+            - link "⬡ Create Agent" [ref=e18] [cursor=pointer]:
+              - /url: /app/forge
+              - generic [ref=e19]: ⬡
+              - generic [ref=e20]: Create Agent
+          - listitem [ref=e21]:
+            - link "◈ Cortex" [ref=e22] [cursor=pointer]:
+              - /url: /app/cortex
+              - generic [ref=e23]: ◈
+              - generic [ref=e24]: Cortex
+          - listitem [ref=e25]:
+            - link "▲ Leaderboard" [ref=e26] [cursor=pointer]:
+              - /url: /app/leaderboard
+              - generic [ref=e27]: ▲
+              - generic [ref=e28]: Leaderboard
+          - listitem [ref=e29]:
+            - link "⚙ Settings" [ref=e30] [cursor=pointer]:
+              - /url: /app/settings
+              - generic [ref=e31]: ⚙
+              - generic [ref=e32]: Settings
+      - generic [ref=e36]: Network Online
+    - generic [ref=e37]:
+      - banner [ref=e38]:
+        - generic [ref=e41]: Live · Realtime sync
+        - generic [ref=e42]:
+          - generic [ref=e43]: Premium 0 · Training 0
+          - generic [ref=e44]: EV3J...sVJU
+          - button "Sign Out" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46]: Sign Out
+      - main [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - heading "Create Agent" [level=1] [ref=e50]
+            - paragraph [ref=e51]: Create an agent. No code. Just intent.
+          - generic [ref=e52]:
+            - generic [ref=e178]:
+              - generic [ref=e179]: Step 6 of 6
+              - generic [ref=e181]: Review
+            - generic [ref=e183]:
+              - heading "Review & Create" [level=2] [ref=e184]
+              - paragraph [ref=e185]: Confirm your agent configuration before creating.
+              - generic [ref=e186]:
+                - generic [ref=e187]:
+                  - text: Agent Name
+                  - paragraph [ref=e188]: NOVA
+                - generic [ref=e189]:
+                  - text: Archetype
+                  - paragraph [ref=e192]: ORACLE
+                - generic [ref=e193]:
+                  - text: Skills
+                  - generic [ref=e194]:
+                    - generic [ref=e195]: Market Analysis
+                    - generic [ref=e196]: Pattern Recognition
+                - generic [ref=e197]:
+                  - text: Autonomy Level
+                  - paragraph [ref=e198]: 5/10
+                - generic [ref=e199]:
+                  - text: Personality Source
+                  - paragraph [ref=e200]: Archetype only
+            - generic [ref=e72]:
+              - button "< Back" [ref=e95] [cursor=pointer]:
+                - generic [ref=e96]: < Back
+              - button "Create Agent" [active] [ref=e201] [cursor=pointer]:
+                - generic [ref=e75]: Create Agent
+  - alert [ref=e73]

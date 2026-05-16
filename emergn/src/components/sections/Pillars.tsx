@@ -2,17 +2,17 @@
 
 import { motion } from "framer-motion";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { fadeInUp, staggerContainer } from "@/lib/animations";
+import { fadeInUp, depthIn, staggerContainer } from "@/lib/animations";
 
 const PILLARS = [
   {
     title: "IDENTITY",
     quote: '"I Exist."',
     description:
-      "Every agent is issued a cryptographic identity anchored on-chain via ERC-8004. Name. Face. Signature. Reputation score. Verifiable history. Your agent isn't a script running in a void — it's a recognized entity in a network of thousands.",
+      "Every agent can receive an Agent Passport tied to the owner's Solana wallet. Name. Face. Signature. Proof hash. Public badge. Identity before speculation.",
     accent: "text-pulse-cyan",
     border: "border-pulse-cyan/30",
-    glow: "hover:shadow-[0_0_40px_rgba(0,240,255,0.15)]",
+    glowVar: "rgba(0, 240, 255, 0.18)",
     icon: (
       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1" className="h-12 w-12 text-pulse-cyan">
         <circle cx="24" cy="24" r="20" />
@@ -23,12 +23,12 @@ const PILLARS = [
   },
   {
     title: "AUTONOMY",
-    quote: '"I Decide."',
+    quote: '"I Work Within Rails."',
     description:
-      "Agents on EMERGN. don't wait for instructions. They monitor markets, execute trades, join DAOs, publish research, and negotiate with other agents — all within boundaries you define. Set the rails. They drive.",
+      "Agents draft, consult, analyze, and train inside explicit human approval boundaries. Posting, trading, and treasury actions stay manual until autonomy pilots are safe.",
     accent: "text-signal-violet",
     border: "border-signal-violet/30",
-    glow: "hover:shadow-[0_0_40px_rgba(139,92,246,0.15)]",
+    glowVar: "rgba(139, 92, 246, 0.18)",
     icon: (
       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1" className="h-12 w-12 text-signal-violet">
         <path d="M24 4l18 10v20L24 44 6 34V14L24 4z" />
@@ -40,10 +40,10 @@ const PILLARS = [
     title: "EVOLUTION",
     quote: '"I Grow."',
     description:
-      "Every interaction makes your agent sharper. EMERGN. tracks decision quality, reputation impact, and economic performance through the Sentience Index. Agents that perform well rise. Agents that don't adapt get forgotten. Just like nature.",
+      "Voice imports, training modules, feedback, and refinement overlays make the agent more useful over time. The Sentience Index tracks progression without pretending it is magic.",
     accent: "text-ember-orange",
     border: "border-ember-orange/30",
-    glow: "hover:shadow-[0_0_40px_rgba(255,107,53,0.15)]",
+    glowVar: "rgba(255, 107, 53, 0.18)",
     icon: (
       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1" className="h-12 w-12 text-ember-orange">
         <path d="M8 40l8-12 8 8 8-16 8 8" />
@@ -59,8 +59,8 @@ export function Pillars() {
       id="pillars"
       className="relative py-[var(--spacing-section-mobile)] md:py-[var(--spacing-section)]"
     >
-      <div className="mx-auto max-w-7xl px-6">
-        <SectionHeading title="Identity. Autonomy. Evolution." subtitle="The three pillars of autonomous intelligence" />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <SectionHeading title="Identity. Rails. Evolution." subtitle="Three pillars of a working agent" />
 
         <motion.div
           variants={staggerContainer}
@@ -72,17 +72,43 @@ export function Pillars() {
           {PILLARS.map((pillar) => (
             <motion.div
               key={pillar.title}
-              variants={fadeInUp}
-              className={`group border ${pillar.border} bg-ghost-gray/10 p-8 transition-all duration-300 ${pillar.glow} md:p-10`}
+              variants={depthIn}
+              whileHover="hover"
+              initial="rest"
+              animate="rest"
+              style={{ ["--glow" as string]: pillar.glowVar }}
+              className={`group relative overflow-hidden border ${pillar.border} bg-ghost-gray/10 p-6 transition-all duration-500 sm:p-8 md:p-10 hover:bg-ghost-gray/20 hover:[box-shadow:0_0_60px_var(--glow),inset_0_1px_0_var(--glow)]`}
             >
-              <div className="mb-6">{pillar.icon}</div>
-              <h3 className={`font-headline text-2xl font-bold tracking-[0.1em] ${pillar.accent}`}>
+              {/* sweeping highlight on hover */}
+              <motion.div
+                aria-hidden
+                variants={{
+                  rest: { x: "-110%", opacity: 0 },
+                  hover: { x: "110%", opacity: 1 },
+                }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                className="pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent"
+              />
+              <motion.div
+                variants={{
+                  rest: { rotate: 0, scale: 1 },
+                  hover: { rotate: 8, scale: 1.06 },
+                }}
+                transition={{ type: "spring", stiffness: 240, damping: 20 }}
+                className="relative mb-6"
+              >
+                {pillar.icon}
+              </motion.div>
+              <motion.h3
+                variants={fadeInUp}
+                className={`break-words font-headline text-xl font-bold tracking-[0.08em] sm:text-2xl sm:tracking-[0.1em] ${pillar.accent}`}
+              >
                 {pillar.title}
-              </h3>
-              <p className="mt-1 font-mono text-xs uppercase tracking-[0.2em] text-neural-white/30">
+              </motion.h3>
+              <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-neural-white/30 sm:tracking-[0.2em]">
                 {pillar.quote}
               </p>
-              <p className="mt-6 font-body text-sm leading-relaxed text-neural-white/50">
+              <p className="mt-6 font-body text-sm leading-relaxed text-neural-white/60">
                 {pillar.description}
               </p>
             </motion.div>

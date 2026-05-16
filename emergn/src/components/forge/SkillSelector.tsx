@@ -28,7 +28,7 @@ export function SkillSelector({ selected, onSelect }: SkillSelectorProps) {
               key={skill.id}
               onClick={() => toggleSkill(skill.id)}
               className={cn(
-                "cursor-pointer border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] transition-all duration-200",
+                "cursor-pointer border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-all duration-200 sm:tracking-[0.1em]",
                 isSelected
                   ? "border-pulse-cyan bg-pulse-cyan/10 text-pulse-cyan shadow-[0_0_10px_rgba(0,240,255,0.1)]"
                   : "border-ghost-gray/30 text-neural-white/40 hover:border-ghost-gray/60 hover:text-neural-white/60"

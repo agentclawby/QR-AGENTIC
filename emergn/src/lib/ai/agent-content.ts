@@ -20,10 +20,11 @@ interface ContentResult {
 export async function generateAgentContent(
   params: ContentParams
 ): Promise<ContentResult> {
-  const { text } = await generateText({
-    model: anthropic("claude-sonnet-4-20250514"),
-    system: params.runtimePrompt,
-    prompt: `Generate ${params.format === "thread" ? "an X thread" : "an X post"} for this topic:
+  try {
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4-20250514"),
+      system: params.runtimePrompt,
+      prompt: `Generate ${params.format === "thread" ? "an X thread" : "an X post"} for this topic:
 
 Topic: ${params.topic}
 Agent: ${params.agentName}
@@ -33,6 +34,7 @@ Requirements:
 - Be ready to copy-paste into X.
 - No hashtags unless the voice genuinely calls for them.
 - Keep claims specific and avoid generic filler.
+- Do not claim the agent autonomously traded, posted, moved funds, or guaranteed returns.
 
 Return ONLY valid JSON:
 {
@@ -40,12 +42,15 @@ Return ONLY valid JSON:
   "content": "The final X-ready copy",
   "notes": "1-2 sentences on why this matches the voice"
 }`,
-    maxOutputTokens: params.format === "thread" ? 1200 : 700,
-  });
+      maxOutputTokens: params.format === "thread" ? 1200 : 700,
+    });
 
-  try {
     return JSON.parse(cleanJsonResponse(text)) as ContentResult;
-  } catch {
+  } catch (error) {
+    console.error(
+      "[agent-content] generation or parse failed, using fallback:",
+      error instanceof Error ? error.message : error
+    );
     return {
       title: `${params.agentName} ${params.format}`,
       content:

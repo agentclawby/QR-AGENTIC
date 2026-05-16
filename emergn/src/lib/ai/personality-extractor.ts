@@ -18,21 +18,25 @@ interface ExtractedPersonalityPayload {
   overlay: string;
 }
 
+const DEFAULT_PERSONALITY_SAMPLE_LIMIT = 20;
+
 export async function extractXPersonality(options: {
   handle: string;
   bio?: string | null;
   tweets: NormalizedTweet[];
+  maxTweets?: number;
 }): Promise<ExtractedPersonalityPayload> {
   const tweetSample = options.tweets
-    .slice(0, 80)
+    .slice(0, options.maxTweets ?? DEFAULT_PERSONALITY_SAMPLE_LIMIT)
     .map((tweet, index) => `${index + 1}. ${tweet.text}`)
     .join("\n");
 
-  const { text } = await generateText({
-    model: anthropic("claude-sonnet-4-20250514"),
-    system: `You analyze public X posts and extract voice characteristics for an AI agent overlay.
+  try {
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4-20250514"),
+      system: `You analyze public X posts and extract voice characteristics for an AI agent overlay.
 Return ONLY valid JSON. Do not wrap in markdown.`,
-    prompt: `Analyze the following X account and build a voice overlay for an AI agent.
+      prompt: `Analyze the following X account and build a voice overlay for an AI agent.
 
 Handle: @${options.handle}
 Bio: ${options.bio ?? "No bio provided"}
@@ -53,12 +57,15 @@ Return this exact JSON shape:
   },
   "overlay": "A concise instruction block in second person that tells an AI how to sound like this user while staying useful and credible. Mention tone, cadence, recurring topics, what to avoid, and how to handle uncertainty."
 }`,
-    maxOutputTokens: 1400,
-  });
+      maxOutputTokens: 1400,
+    });
 
-  try {
     return JSON.parse(cleanJsonResponse(text)) as ExtractedPersonalityPayload;
-  } catch {
+  } catch (error) {
+    console.error(
+      "[personality-extractor] generation or parse failed, using fallback:",
+      error instanceof Error ? error.message : error
+    );
     return {
       traits: {
         tone: ["direct", "opinionated", "crypto-native"],

@@ -1,16 +1,35 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-export function Logo({ className }: { className?: string }) {
+interface LogoProps {
+  className?: string;
+  showWordmark?: boolean;
+  glyphSize?: number;
+}
+
+export function Logo({ className, showWordmark = true, glyphSize = 32 }: LogoProps) {
   return (
     <span
       className={cn(
-        "font-headline text-2xl font-bold tracking-wider text-neural-white",
+        "inline-flex items-center gap-2.5 text-2xl leading-none",
         className
       )}
     >
-      EMERGN<span className="text-pulse-cyan">.</span>
+      <Image
+        src="/logo.png"
+        alt="EMERGN."
+        width={glyphSize}
+        height={glyphSize}
+        priority
+        className="block shrink-0"
+      />
+      {showWordmark && (
+        <span className="font-headline font-bold tracking-wider text-neural-white">
+          EMERGN<span className="text-pulse-cyan">.</span>
+        </span>
+      )}
     </span>
   );
 }

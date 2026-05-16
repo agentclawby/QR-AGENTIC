@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { Profile } from "@/types";
@@ -9,15 +9,21 @@ interface AuthState {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  isSigningOut: boolean;
   signOut: () => Promise<void>;
+}
+
+function isMissingSessionError(error: { message?: string } | null) {
+  return /auth session missing|session.*missing/i.test(error?.message ?? "");
 }
 
 export function useAuth(): AuthState {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchProfile = useCallback(
     async (userId: string) => {
@@ -70,11 +76,27 @@ export function useAuth(): AuthState {
   }, [supabase, fetchProfile]);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (isSigningOut) return;
+
+    setIsSigningOut(true);
+
     setUser(null);
     setProfile(null);
-    window.location.href = "/";
-  }, [supabase]);
+    setIsLoading(false);
 
-  return { user, profile, isLoading, signOut };
+    void supabase.auth
+      .signOut({ scope: "local" })
+      .then(({ error }) => {
+        if (error && !isMissingSessionError(error)) {
+          console.error("[auth] local sign-out failed", error.message);
+        }
+      })
+      .catch((error) => {
+        console.error("[auth] local sign-out failed", error);
+      });
+
+    window.location.assign("/auth/signout");
+  }, [isSigningOut, supabase]);
+
+  return { user, profile, isLoading, isSigningOut, signOut };
 }

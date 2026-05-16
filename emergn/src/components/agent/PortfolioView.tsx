@@ -57,13 +57,13 @@ export function PortfolioView({
   };
 
   return (
-    <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-6">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="font-headline text-sm font-bold uppercase tracking-[0.15em] text-neural-white">
+    <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-5 sm:p-6">
+      <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row">
+        <div className="min-w-0">
+          <h2 className="font-headline text-sm font-bold uppercase tracking-[0.1em] text-neural-white sm:tracking-[0.15em]">
             Portfolio Analysis
           </h2>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/35">
+          <p className="mt-1 font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-neural-white/35 sm:tracking-[0.12em]">
             Read-only wallet analysis with concentration, exposure, and heuristic
             PnL estimates. This is investor-facing guidance, not accounting-grade reporting.
           </p>
@@ -73,12 +73,13 @@ export function PortfolioView({
           size="sm"
           disabled={loading || Boolean(disabledReason)}
           onClick={handleAnalyze}
+          className="w-full sm:w-auto"
         >
           {loading ? "Analyzing..." : "Analyze Wallet"}
         </Button>
       </div>
 
-      <div className="mb-4 space-y-2 font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/35">
+      <div className="mb-4 space-y-2 break-words font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-neural-white/35 sm:tracking-[0.12em]">
         <p>
           Wallet source:{" "}
           {walletAddress
@@ -89,7 +90,7 @@ export function PortfolioView({
       </div>
 
       {status && (
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-ember-orange">
+        <p className="mb-3 font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ember-orange sm:tracking-[0.12em]">
           {status}
         </p>
       )}
@@ -124,7 +125,7 @@ export function PortfolioView({
           </div>
 
           <div className="border border-ghost-gray/15 bg-void-black p-4">
-            <p className="mb-2 font-headline text-xs font-bold uppercase tracking-[0.12em] text-pulse-cyan">
+            <p className="mb-2 break-words font-headline text-xs font-bold uppercase tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]">
               {result.analysis.title}
             </p>
             <p className="text-sm leading-relaxed text-neural-white/70">
@@ -133,16 +134,16 @@ export function PortfolioView({
           </div>
 
           <div className="border border-ghost-gray/15 bg-void-black p-4">
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/30">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/30 sm:tracking-[0.12em]">
               Top Holdings
             </p>
             <div className="space-y-2">
               {result.snapshot.holdings.slice(0, 6).map((holding) => (
-                <div key={holding.mint} className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-neural-white/60">
+                <div key={holding.mint} className="flex min-w-0 items-center justify-between gap-3">
+                  <span className="min-w-0 truncate font-mono text-xs text-neural-white/60">
                     {holding.symbol}
                   </span>
-                  <span className="font-mono text-xs text-neural-white/40">
+                  <span className="shrink-0 font-mono text-xs text-neural-white/40">
                     ${holding.usdValue.toFixed(2)}
                   </span>
                 </div>
@@ -150,7 +151,7 @@ export function PortfolioView({
             </div>
           </div>
 
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/25">
+          <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-neural-white/25 sm:tracking-[0.12em]">
             {result.snapshot.disclaimer}
           </p>
         </div>
@@ -162,7 +163,7 @@ export function PortfolioView({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-ghost-gray/15 bg-void-black p-4">
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/30">
+      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/30 sm:tracking-[0.12em]">
         {label}
       </p>
       <p className="mt-1 font-mono text-base text-neural-white/75">{value}</p>

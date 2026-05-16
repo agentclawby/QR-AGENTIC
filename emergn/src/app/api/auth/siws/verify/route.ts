@@ -1,98 +1,126 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import nacl from "tweetnacl";
-import bs58 from "bs58";
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  SOLANA_AUTH_NONCE_COOKIE,
+  isSupabaseExistingAccountError,
+  verifySolanaAuthMessage,
+} from "@/lib/auth/solana-auth";
 
-// Use service role client for admin operations (creating users, signing JWTs)
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+function withClearedNonce(response: NextResponse) {
+  response.cookies.set(SOLANA_AUTH_NONCE_COOKIE, "", {
+    path: "/",
+    maxAge: 0,
+  });
+  return response;
 }
 
-export async function POST(request: Request) {
+function jsonWithClearedNonce(
+  body: Record<string, unknown>,
+  init?: ResponseInit
+) {
+  return withClearedNonce(NextResponse.json(body, init));
+}
+
+function getSafeAdminError(error: {
+  message?: string;
+  status?: number | string;
+  code?: string;
+}) {
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  return {
+    message: error.message ?? "Unknown Supabase admin error",
+    status: error.status ?? null,
+    code: error.code ?? null,
+  };
+}
+
+export async function POST(request: NextRequest) {
   try {
     const { publicKey, signature, message, nonce } = await request.json();
 
     if (!publicKey || !signature || !message || !nonce) {
-      return NextResponse.json(
+      return jsonWithClearedNonce(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Decode from bs58
-    const publicKeyBytes = bs58.decode(publicKey);
-    const signatureBytes = bs58.decode(signature);
-    const messageBytes = bs58.decode(message);
-
-    // Verify the signature
-    const isValid = nacl.sign.detached.verify(
-      messageBytes,
-      signatureBytes,
-      publicKeyBytes
-    );
-
-    if (!isValid) {
-      return NextResponse.json(
-        { error: "Invalid signature" },
+    const expectedNonce = request.cookies.get(SOLANA_AUTH_NONCE_COOKIE)?.value;
+    if (nonce !== expectedNonce) {
+      return jsonWithClearedNonce(
+        { error: "Missing or expired nonce. Please request a new signature." },
         { status: 401 }
       );
     }
 
-    // Verify the message contains the correct wallet and nonce
-    const messageText = new TextDecoder().decode(messageBytes);
-    if (!messageText.includes(publicKey) || !messageText.includes(nonce)) {
-      return NextResponse.json(
-        { error: "Message verification failed" },
+    const verification = verifySolanaAuthMessage({
+      publicKey,
+      signature,
+      message,
+      expectedNonce,
+      expectedIntent: "sign-in",
+      request,
+    });
+
+    if (!verification.valid) {
+      return jsonWithClearedNonce(
+        { error: verification.error ?? "Message verification failed" },
         { status: 401 }
       );
     }
 
-    const supabaseAdmin = getAdminClient();
+    const supabaseAdmin = createAdminClient();
+    const walletEmail = `${publicKey}@wallet.emergn.xyz`;
 
-    // Check if user already exists with this wallet
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      (u) =>
-        u.user_metadata?.wallet_address === publicKey ||
-        u.email === `${publicKey}@wallet.emergn.xyz`
-    );
+    const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: walletEmail,
+      email_confirm: true,
+      user_metadata: {
+        wallet_address: publicKey,
+        provider: "solana",
+      },
+    });
 
-    if (existingUser) {
-      // User exists, proceed to generate session
-    } else {
-      // Create new user with wallet as identity
-      const { data: newUser, error: createError } =
-        await supabaseAdmin.auth.admin.createUser({
-          email: `${publicKey}@wallet.emergn.xyz`,
-          email_confirm: true,
-          user_metadata: {
-            wallet_address: publicKey,
-            provider: "solana",
-          },
-        });
+    if (createError && !isSupabaseExistingAccountError(createError)) {
+      console.error("[siws/verify] wallet user creation failed", {
+        status: createError.status,
+        code: createError.code,
+        message: createError.message,
+      });
 
-      if (createError || !newUser?.user) {
-        return NextResponse.json(
-          { error: "Failed to create user" },
-          { status: 500 }
-        );
-      }
-
+      return jsonWithClearedNonce(
+        {
+          error: "Failed to create wallet user",
+          details: getSafeAdminError(createError),
+        },
+        { status: 500 }
+      );
     }
 
     // Generate a magic link / session for the user
     const { data: linkData, error: linkError } =
       await supabaseAdmin.auth.admin.generateLink({
         type: "magiclink",
-        email: `${publicKey}@wallet.emergn.xyz`,
+        email: walletEmail,
       });
 
     if (linkError || !linkData) {
-      return NextResponse.json(
-        { error: "Failed to generate session" },
+      if (linkError) {
+        console.error("[siws/verify] wallet session link failed", {
+          status: linkError.status,
+          code: linkError.code,
+          message: linkError.message,
+        });
+      }
+
+      return jsonWithClearedNonce(
+        {
+          error: "Failed to generate session",
+          details: linkError ? getSafeAdminError(linkError) : null,
+        },
         { status: 500 }
       );
     }
@@ -101,15 +129,22 @@ export async function POST(request: Request) {
     const url = new URL(linkData.properties.action_link);
     const type = url.searchParams.get("type");
 
-    return NextResponse.json({
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[siws/verify] issued session link", {
+        publicKey: publicKey.slice(0, 8),
+        type,
+      });
+    }
+
+    return withClearedNonce(NextResponse.json({
       success: true,
       // Client will use this to verify the OTP and establish a session
       token_hash: linkData.properties.hashed_token,
       verification_url: `/auth/callback?token_hash=${linkData.properties.hashed_token}&type=${type}`,
-    });
+    }));
   } catch (error) {
     console.error("SIWS verify error:", error);
-    return NextResponse.json(
+    return jsonWithClearedNonce(
       { error: "Internal server error" },
       { status: 500 }
     );

@@ -1,34 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
-import { PaymentModal } from "@/components/payments/PaymentModal";
-import type { CapabilityStatus, UserCreditBalance } from "@/types";
+import type { UserCreditBalance } from "@/types";
 
-interface CreditPack {
-  id: "starter" | "pro" | "whale";
-  label: string;
-  amountTokens: number;
-  premiumCredits: number;
-  trainingCredits: number;
-}
+// V1 ships in operator-paid mode: purchase controls are intentionally not
+// rendered. We still fetch /api/payments/balance to display the user's current
+// free / training credit grant in the header.
 
 interface CreditBalanceResponse {
   credits: UserCreditBalance;
-  packs: CreditPack[];
-  paymentConfig: {
-    emrgMint: string | null;
-    treasuryWallet: string | null;
-    tokenDecimals: number;
-  };
-  paymentCapability: CapabilityStatus;
-  linkedWalletAddress: string | null;
 }
 
 export function CreditBalance() {
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
   const [data, setData] = useState<CreditBalanceResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -37,7 +23,12 @@ export function CreditBalance() {
       const payload = await response.json();
       if (response.ok) {
         setData(payload as CreditBalanceResponse);
+        setError(null);
+      } else {
+        setError(payload?.error || "Credits unavailable");
       }
+    } catch {
+      setError("Credits unavailable");
     } finally {
       setLoading(false);
     }
@@ -47,49 +38,43 @@ export function CreditBalance() {
     void load();
   }, []);
 
-  if (loading || !data) {
+  if (loading) {
     return (
-      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/30">
-        Credits loading...
+      <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/30 sm:tracking-[0.12em]">
+        Credits...
       </span>
     );
   }
 
-  const disabledReason = !data.paymentCapability.enabled
-    ? data.paymentCapability.reason
-    : !data.linkedWalletAddress
-      ? "Link a wallet in Settings before buying credits."
-      : null;
+  if (error || !data) {
+    return (
+      <button
+        type="button"
+        onClick={() => void load()}
+        className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.08em] text-ember-orange/80 hover:text-ember-orange sm:tracking-[0.12em]"
+        title={error ?? undefined}
+      >
+        Credits retry
+      </button>
+    );
+  }
+
+  // Fallback for users on the old three-pool model (pre-migration-008): sum the
+  // legacy buckets so the header still reflects an honest number.
+  const credits = data.credits;
+  const total =
+    (credits.action_credits ?? 0) > 0
+      ? credits.action_credits
+      : (credits.training_credits ?? 0) +
+        (credits.premium_credits ?? 0) +
+        (credits.free_consults_remaining ?? 0);
 
   return (
-    <>
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/35">
-          Premium {data.credits.premium_credits} · Training {data.credits.training_credits}
-        </span>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={Boolean(disabledReason)}
-          onClick={() => setOpen(true)}
-        >
-          Buy Credits
-        </Button>
-      </div>
-      {disabledReason ? (
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-neural-white/35">
-          {disabledReason}
-        </p>
-      ) : null}
-      <PaymentModal
-        open={open}
-        onClose={() => setOpen(false)}
-        onVerified={load}
-        packs={data.packs}
-        paymentConfig={data.paymentConfig}
-        linkedWalletAddress={data.linkedWalletAddress}
-        disabledReason={disabledReason}
-      />
-    </>
+    <span
+      className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]"
+      title="1 credit = 1 train / consult / content draft. X-retrain costs 2."
+    >
+      Credits {total}
+    </span>
   );
 }

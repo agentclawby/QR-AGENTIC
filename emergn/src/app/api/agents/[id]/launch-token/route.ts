@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSystemCapabilities } from "@/lib/config/features";
 import {
   isTokenLaunchAllowed,
+  LaunchImageValidationError,
   preparePumpPortalLaunch,
 } from "@/lib/tokens/launch";
 import { getSolanaConnection } from "@/lib/solana/connection";
@@ -341,6 +342,9 @@ export async function POST(
       signature: body.signature,
     });
   } catch (error) {
+    if (error instanceof LaunchImageValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Launch token error:", error);
     return NextResponse.json(
       {

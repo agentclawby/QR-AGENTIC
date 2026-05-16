@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:check": "node -e \"console.log('Apply SQL files in supabase/migrations/ via the Supabase SQL editor in numeric order. Required for V1: 001, 002, 004, 005, 006, 011, 012.')\""
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.69",

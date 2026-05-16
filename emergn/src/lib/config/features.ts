@@ -5,6 +5,9 @@ interface CapabilityContext {
   walletAddress?: string | null;
 }
 
+export const V1_PAYMENTS_DISABLED_REASON =
+  "Credits are included with your account during launch.";
+
 function isConfigured(value: string | undefined | null) {
   if (!value) return false;
 
@@ -25,10 +28,7 @@ export function getSystemCapabilities(
   const anthropicReady = isConfigured(process.env.ANTHROPIC_API_KEY);
   const twitterReady = isConfigured(process.env.TWITTERAPI_IO_KEY);
   const heliusReady = isConfigured(process.env.HELIUS_API_KEY);
-  const paymentsReady =
-    isConfigured(process.env.EMRG_TOKEN_MINT) &&
-    isConfigured(process.env.EMERGN_TREASURY_WALLET) &&
-    Number.isFinite(Number(process.env.EMRG_TOKEN_DECIMALS ?? "6"));
+  const higgsfieldReady = isConfigured(process.env.HIGGSFIELD_API_KEY);
   const launchProvidersReady =
     isConfigured(process.env.PUMPPORTAL_API_KEY) &&
     isConfigured(process.env.PINATA_JWT);
@@ -39,51 +39,53 @@ export function getSystemCapabilities(
       ? { enabled: true, reason: null }
       : {
           enabled: false,
-          reason: "Anthropic is not configured yet.",
+          reason: "This feature is temporarily unavailable.",
         },
     x_import: anthropicReady && twitterReady
       ? { enabled: true, reason: null }
       : {
           enabled: false,
-          reason: !twitterReady
-            ? "X import is unavailable until TWITTERAPI_IO_KEY is configured."
-            : "X import also needs Anthropic to build a voice overlay.",
+          reason: "X voice import is temporarily unavailable.",
         },
     portfolio_analysis: anthropicReady && heliusReady
       ? { enabled: true, reason: null }
       : {
           enabled: false,
-          reason: !heliusReady
-            ? "Portfolio analysis is unavailable until HELIUS_API_KEY is configured."
-            : "Portfolio analysis also needs Anthropic for the written review.",
+          reason: "Portfolio analysis is temporarily unavailable.",
         },
-    payments: paymentsReady
+    agent_passport: context.walletAddress
       ? { enabled: true, reason: null }
       : {
           enabled: false,
-          reason:
-            "Credit purchases are unavailable until EMRG mint, treasury wallet, and token decimals are configured.",
+          reason: "Link a Solana wallet to issue an Agent Passport.",
         },
+    passport_image: higgsfieldReady
+      ? { enabled: true, reason: null }
+      : {
+          enabled: false,
+          reason: "Passport image rendering is temporarily unavailable.",
+        },
+    payments: {
+      enabled: false,
+      reason: V1_PAYMENTS_DISABLED_REASON,
+    },
     token_launch: launchProvidersReady
       ? context.walletAddress
         ? isTokenLaunchAllowed(context.walletAddress)
           ? { enabled: true, reason: null }
           : {
               enabled: false,
-              reason:
-                "Token launch is still in canary mode for allowlisted wallets only.",
+              reason: "Token launch is in limited preview.",
             }
         : allowlist.open
           ? { enabled: true, reason: null }
           : {
               enabled: false,
-              reason:
-                "Link a wallet to see whether this account is in the launch canary.",
+              reason: "Link a wallet to access token launch.",
             }
       : {
           enabled: false,
-          reason:
-            "Token launch is unavailable until PumpPortal and Pinata are configured.",
+          reason: "Token launch is in limited preview.",
         },
   };
 }

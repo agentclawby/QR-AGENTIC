@@ -29,26 +29,26 @@ export function ForgeReview({
     <div className="space-y-4">
       {/* Name */}
       <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-4">
-        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neural-white/30">
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neural-white/30 sm:tracking-[0.15em]">
           Agent Name
         </span>
-        <p className="mt-1 font-headline text-lg font-bold uppercase tracking-[0.1em] text-neural-white">
+        <p className="mt-1 break-words font-headline text-lg font-bold uppercase tracking-[0.08em] text-neural-white sm:tracking-[0.1em]">
           {name}
         </p>
       </div>
 
       {/* Archetype */}
       <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-4">
-        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neural-white/30">
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neural-white/30 sm:tracking-[0.15em]">
           Archetype
         </span>
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-1 flex min-w-0 items-center gap-2">
           <div
-            className="h-2.5 w-2.5"
+            className="h-2.5 w-2.5 shrink-0"
             style={{ backgroundColor: archetypeData?.color }}
           />
           <p
-            className="font-headline text-sm font-bold uppercase tracking-[0.15em]"
+            className="min-w-0 break-words font-headline text-sm font-bold uppercase tracking-[0.1em] sm:tracking-[0.15em]"
             style={{ color: archetypeData?.color }}
           >
             {archetype}
@@ -58,14 +58,14 @@ export function ForgeReview({
 
       {/* Skills */}
       <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-4">
-        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neural-white/30">
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neural-white/30 sm:tracking-[0.15em]">
           Skills
         </span>
         <div className="mt-2 flex flex-wrap gap-2">
           {skillNames.map((skill) => (
             <span
               key={skill}
-              className="border border-pulse-cyan/30 bg-pulse-cyan/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-pulse-cyan"
+              className="border border-pulse-cyan/30 bg-pulse-cyan/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-pulse-cyan sm:tracking-[0.1em]"
             >
               {skill}
             </span>
@@ -75,7 +75,7 @@ export function ForgeReview({
 
       {/* Autonomy */}
       <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-4">
-        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neural-white/30">
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neural-white/30 sm:tracking-[0.15em]">
           Autonomy Level
         </span>
         <p className="mt-1 font-mono text-lg font-bold text-pulse-cyan">
@@ -85,10 +85,10 @@ export function ForgeReview({
       </div>
 
       <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-4">
-        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neural-white/30">
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neural-white/30 sm:tracking-[0.15em]">
           Personality Source
         </span>
-        <p className="mt-1 font-mono text-sm uppercase tracking-[0.12em] text-neural-white/65">
+        <p className="mt-1 font-mono text-sm uppercase tracking-[0.08em] text-neural-white/65 sm:tracking-[0.12em]">
           {personalitySource === "archetype"
             ? "Archetype only"
             : personalitySource === "x_import"
