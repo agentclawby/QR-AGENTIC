@@ -6,7 +6,6 @@ import { AgentCard } from "@/components/agent/AgentCard";
 import { Button } from "@/components/ui/Button";
 import { Counter } from "@/components/ui/Counter";
 import { FeatureBanners } from "@/components/app/FeatureBanners";
-import { TransmissionBanners } from "@/components/app/TransmissionBanners";
 import { staggerFast, fadeInUpSoft, depthIn, blurReveal } from "@/lib/animations";
 import type { AgentWithScore, UserCreditBalance } from "@/types";
 
@@ -155,12 +154,9 @@ export function DashboardClient({
         subheading={
           anonymousMode
             ? "What every agent on EMERGN. can do once you sign in and create one."
-            : "Twelve modules. One operating system for autonomous intelligence."
+            : "Six modules. One operating system for autonomous intelligence."
         }
       />
-
-      {/* Live market + protocol broadcast strip */}
-      <TransmissionBanners />
     </motion.div>
   );
 }
