@@ -2,15 +2,12 @@ import { Keypair } from "@solana/web3.js";
 
 export type TokenLaunchProvider = "pumpportal" | "direct_spl";
 
-export interface PreparePumpPortalLaunchInput {
+export interface PrepareAgentTokenLaunchInput {
   walletPublicKey: string;
   mintPublicKey: string;
   tokenName: string;
   tokenSymbol: string;
   description: string;
-  website?: string;
-  twitter?: string;
-  telegram?: string;
   imageDataUrl: string;
   devBuySol: number;
 }
@@ -30,6 +27,15 @@ export class LaunchImageValidationError extends Error {
   }
 }
 
+function getEmergnBranding() {
+  const website = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  return {
+    twitter: process.env.NEXT_PUBLIC_EMERGN_X_HANDLE ?? "",
+    website,
+    createdOn: website,
+  };
+}
+
 function dataUrlToFile(dataUrl: string, fileName: string) {
   const [meta, base64] = dataUrl.split(",");
   const mimeMatch = meta?.match(/^data:(.+?);base64$/);
@@ -42,7 +48,7 @@ function dataUrlToFile(dataUrl: string, fileName: string) {
   const mime = mimeMatch[1].toLowerCase();
   if (!ALLOWED_IMAGE_MIMES.has(mime)) {
     throw new LaunchImageValidationError(
-      `Unsupported image type: ${mime}. Allowed: png, jpeg, webp, gif.`
+      `Token image type is not supported: ${mime}. Allowed: png, jpeg, webp, gif.`
     );
   }
 
@@ -59,7 +65,7 @@ function dataUrlToFile(dataUrl: string, fileName: string) {
   return new File([buffer], fileName, { type: mime });
 }
 
-async function uploadToPinata(file: File, pinataJwt: string) {
+async function uploadMetadataAsset(file: File, jwt: string) {
   const formData = new FormData();
   formData.append("network", "public");
   formData.append("file", file);
@@ -67,43 +73,42 @@ async function uploadToPinata(file: File, pinataJwt: string) {
   const response = await fetch("https://uploads.pinata.cloud/v3/files", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${pinataJwt}`,
+      Authorization: `Bearer ${jwt}`,
     },
     body: formData,
   });
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(`Pinata upload failed: ${message || response.statusText}`);
+    console.error("Token metadata asset upload failed:", message || response.statusText);
+    throw new Error("Token metadata upload failed");
   }
 
   const payload = (await response.json()) as { data?: { cid?: string } };
   const cid = payload.data?.cid;
   if (!cid) {
-    throw new Error("Pinata upload did not return a CID");
+    throw new Error("Token metadata upload returned no CID");
   }
 
   return `https://ipfs.io/ipfs/${cid}`;
 }
 
 async function uploadMetadata(options: {
-  pinataJwt: string;
+  jwt: string;
   tokenName: string;
   tokenSymbol: string;
   description: string;
-  website?: string;
-  twitter?: string;
-  telegram?: string;
   imageUri: string;
 }) {
+  const branding = getEmergnBranding();
   const metadata = {
     name: options.tokenName,
     symbol: options.tokenSymbol,
     image: options.imageUri,
     description: options.description,
-    twitter: options.twitter ?? "",
-    telegram: options.telegram ?? "",
-    website: options.website ?? "",
+    twitter: branding.twitter,
+    website: branding.website,
+    createdOn: branding.createdOn,
   };
 
   const metadataFile = new File(
@@ -112,36 +117,33 @@ async function uploadMetadata(options: {
     { type: "application/json" }
   );
 
-  return uploadToPinata(metadataFile, options.pinataJwt);
+  return uploadMetadataAsset(metadataFile, options.jwt);
 }
 
-export async function preparePumpPortalLaunch(
-  input: PreparePumpPortalLaunchInput
+export async function prepareAgentTokenLaunch(
+  input: PrepareAgentTokenLaunchInput
 ) {
   const apiKey = process.env.PUMPPORTAL_API_KEY;
-  const pinataJwt = process.env.PINATA_JWT;
+  const metadataJwt = process.env.PINATA_JWT;
 
   if (!apiKey) {
-    throw new Error("PUMPPORTAL_API_KEY is not configured");
+    throw new Error("Token launch is not configured");
   }
 
-  if (!pinataJwt) {
-    throw new Error("PINATA_JWT is not configured");
+  if (!metadataJwt) {
+    throw new Error("Token launch is not configured");
   }
 
   const imageFile = dataUrlToFile(
     input.imageDataUrl,
     `${input.tokenSymbol.toLowerCase()}-token.png`
   );
-  const imageUri = await uploadToPinata(imageFile, pinataJwt);
+  const imageUri = await uploadMetadataAsset(imageFile, metadataJwt);
   const metadataUri = await uploadMetadata({
-    pinataJwt,
+    jwt: metadataJwt,
     tokenName: input.tokenName,
     tokenSymbol: input.tokenSymbol,
     description: input.description,
-    website: input.website,
-    twitter: input.twitter,
-    telegram: input.telegram,
     imageUri,
   });
 
@@ -169,7 +171,8 @@ export async function preparePumpPortalLaunch(
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(`PumpPortal prepare failed: ${message || response.statusText}`);
+    console.error("Agent token launch preparation failed:", message || response.statusText);
+    throw new Error("Agent token launch preparation failed");
   }
 
   const arrayBuffer = await response.arrayBuffer();

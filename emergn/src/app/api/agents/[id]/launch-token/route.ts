@@ -6,7 +6,7 @@ import { getSystemCapabilities } from "@/lib/config/features";
 import {
   isTokenLaunchAllowed,
   LaunchImageValidationError,
-  preparePumpPortalLaunch,
+  prepareAgentTokenLaunch,
 } from "@/lib/tokens/launch";
 import { getSolanaConnection } from "@/lib/solana/connection";
 
@@ -18,9 +18,6 @@ const prepareSchema = z.object({
   tokenName: z.string().trim().min(2).max(32),
   tokenSymbol: z.string().trim().min(2).max(10),
   description: z.string().trim().min(10).max(500),
-  website: z.string().trim().optional(),
-  twitter: z.string().trim().optional(),
-  telegram: z.string().trim().optional(),
   imageDataUrl: z.string().optional(),
   devBuySol: z.number().min(0).max(10).default(0.01),
   tokenGateThreshold: z.number().int().min(0).default(0),
@@ -153,20 +150,17 @@ export async function POST(
       if (body.provider === "pumpportal") {
         if (!body.imageDataUrl) {
           return NextResponse.json(
-            { error: "An image is required for PumpPortal launches" },
+            { error: "Token image is required to launch this agent" },
             { status: 400 }
           );
         }
 
-        const prepared = await preparePumpPortalLaunch({
+        const prepared = await prepareAgentTokenLaunch({
           walletPublicKey: body.walletPublicKey,
           mintPublicKey: body.mintPublicKey,
           tokenName: body.tokenName,
           tokenSymbol: body.tokenSymbol,
           description: body.description,
-          website: body.website,
-          twitter: body.twitter,
-          telegram: body.telegram,
           imageDataUrl: body.imageDataUrl,
           devBuySol: body.devBuySol,
         });
@@ -328,10 +322,13 @@ export async function POST(
         agent_id: agentId,
         interaction_type: "token_launch",
         metadata: {
-          provider: body.provider,
+          launched_via: "emergn",
           tx_signature: body.signature,
           token_mint: body.mintPublicKey,
           token_gate_threshold: body.tokenGateThreshold,
+          internal: {
+            platform: body.provider,
+          },
         },
       }),
     ]);

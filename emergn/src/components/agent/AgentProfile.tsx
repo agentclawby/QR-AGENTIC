@@ -828,6 +828,11 @@ export function AgentProfile({
             agentToken={agentToken}
             linkedWalletAddress={viewerProfile?.wallet_address ?? null}
             disabledReason={gates.tokenLaunch.reason}
+            agentName={agent.name}
+            agentCodename={agent.codename}
+            agentPersonalitySummary={agent.personality_summary}
+            agentPassportImageUrl={agent.passport_image_url}
+            agentPassportImageStatus={agent.passport_image_status}
           />
         </div>
       ) : null}

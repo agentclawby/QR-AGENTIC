@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Keypair,
@@ -25,11 +25,41 @@ interface TokenLaunchProps {
   agentToken: AgentToken | null;
   linkedWalletAddress: string | null;
   disabledReason?: string | null;
+  agentName?: string | null;
+  agentCodename?: string | null;
+  agentPersonalitySummary?: string | null;
+  agentPassportImageUrl?: string | null;
+  agentPassportImageStatus?: string | null;
 }
 
 type LaunchStep = "idle" | "preparing" | "signing" | "confirming" | "done";
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB cap before PumpPortal upload
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB cap before metadata upload
+const DEFAULT_DESCRIPTION =
+  "An autonomous EMERGN. agent. Thinks, decides, evolves on-chain.";
+
+const EMERGN_X_HANDLE =
+  process.env.NEXT_PUBLIC_EMERGN_X_HANDLE ?? "https://x.com/emergndotorg";
+const EMERGN_SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://emergn.org";
+
+function brandHandleLabel(handleUrl: string) {
+  try {
+    const parsed = new URL(handleUrl);
+    const trimmed = parsed.pathname.replace(/\/+$/, "").replace(/^\/+/, "");
+    return trimmed ? `@${trimmed}` : parsed.host;
+  } catch {
+    return handleUrl;
+  }
+}
+
+function brandSiteLabel(siteUrl: string) {
+  try {
+    const parsed = new URL(siteUrl);
+    return parsed.host.replace(/^www\./, "");
+  } catch {
+    return siteUrl;
+  }
+}
 
 function base64ToBytes(base64: string) {
   const binary = window.atob(base64);
@@ -45,14 +75,28 @@ function fileToDataUrl(file: File) {
   });
 }
 
-function isOptionalUrlValid(value: string) {
-  if (!value) return true;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Failed to read passport image"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function randomSuffix(length: number) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let out = "";
+  for (let i = 0; i < length; i += 1) {
+    out += chars[Math.floor(Math.random() * chars.length)];
   }
+  return out;
+}
+
+function buildSymbolFallback(name: string) {
+  const cleanName = name.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const prefix = cleanName.slice(0, 4) || "AGNT";
+  return `${prefix}${randomSuffix(Math.max(0, 7 - prefix.length))}`.slice(0, 10);
 }
 
 interface StepProps {
@@ -85,6 +129,11 @@ export function TokenLaunch({
   agentToken,
   linkedWalletAddress,
   disabledReason = null,
+  agentName = null,
+  agentCodename = null,
+  agentPersonalitySummary = null,
+  agentPassportImageUrl = null,
+  agentPassportImageStatus = null,
 }: TokenLaunchProps) {
   const router = useRouter();
   const { connection } = useConnection();
@@ -95,21 +144,51 @@ export function TokenLaunch({
   const existingTokenMint =
     agentToken && agentToken.status !== "failed" ? agentToken.token_mint : null;
 
+  const defaultTokenName = useMemo(
+    () => (agentName ?? "").slice(0, 32),
+    [agentName],
+  );
+  const defaultTokenSymbol = useMemo(() => {
+    const fromCodename = (agentCodename ?? "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 10);
+    if (fromCodename.length >= 2) return fromCodename;
+    return buildSymbolFallback(agentName ?? "");
+  }, [agentCodename, agentName]);
+  const defaultDescription = useMemo(() => {
+    const summary = (agentPersonalitySummary ?? "").trim();
+    if (summary.length >= 10) return summary.slice(0, 500);
+    return DEFAULT_DESCRIPTION;
+  }, [agentPersonalitySummary]);
+
   const [provider, setProvider] = useState<"pumpportal" | "direct_spl">(
     "pumpportal",
   );
-  const [tokenName, setTokenName] = useState("");
-  const [tokenSymbol, setTokenSymbol] = useState("");
-  const [description, setDescription] = useState("");
-  const [website, setWebsite] = useState("");
-  const [twitter, setTwitter] = useState("");
-  const [telegram, setTelegram] = useState("");
+  const [tokenName, setTokenName] = useState(defaultTokenName);
+  const [tokenSymbol, setTokenSymbol] = useState(defaultTokenSymbol);
+  const [description, setDescription] = useState(defaultDescription);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [passportImageDataUrl, setPassportImageDataUrl] = useState<string | null>(
+    null,
+  );
+  const [usingPassportImage, setUsingPassportImage] = useState(false);
+  const [passportLoading, setPassportLoading] = useState(false);
   const [tokenGateThreshold, setTokenGateThreshold] = useState("0");
   const [directSupply, setDirectSupply] = useState("1000000000");
   const [step, setStep] = useState<LaunchStep>("idle");
   const [status, setStatus] = useState<string | null>(null);
   const [resultSignature, setResultSignature] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!tokenName && defaultTokenName) setTokenName(defaultTokenName);
+  }, [defaultTokenName, tokenName]);
+  useEffect(() => {
+    if (!tokenSymbol && defaultTokenSymbol) setTokenSymbol(defaultTokenSymbol);
+  }, [defaultTokenSymbol, tokenSymbol]);
+  useEffect(() => {
+    if (!description && defaultDescription) setDescription(defaultDescription);
+  }, [defaultDescription, description]);
 
   const walletMismatch =
     publicKey &&
@@ -123,14 +202,41 @@ export function TokenLaunch({
       ? "Link your owner wallet in Settings before launching a token."
       : walletMismatch);
 
+  const passportReady =
+    Boolean(agentPassportImageUrl) && agentPassportImageStatus === "ready";
+
+  const handleUsePassportImage = async () => {
+    if (!agentPassportImageUrl) return;
+    setPassportLoading(true);
+    setStatus(null);
+    try {
+      const response = await fetch(agentPassportImageUrl);
+      if (!response.ok) throw new Error("Failed to load passport image");
+      const blob = await response.blob();
+      if (blob.size > MAX_IMAGE_BYTES) {
+        throw new Error("Passport image exceeds 4 MB launch limit");
+      }
+      const dataUrl = await blobToDataUrl(blob);
+      setPassportImageDataUrl(dataUrl);
+      setUsingPassportImage(true);
+      setImageFile(null);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to load passport image");
+    } finally {
+      setPassportLoading(false);
+    }
+  };
+
+  const handleClearPassportImage = () => {
+    setPassportImageDataUrl(null);
+    setUsingPassportImage(false);
+  };
+
   const validationError = useMemo(() => {
     if (existingTokenMint) return null;
     if (tokenName.trim().length < 2) return null;
     if (tokenSymbol.trim().length < 2) return null;
     if (description.trim().length < 10) return null;
-    if (!isOptionalUrlValid(website)) return "Website URL is invalid.";
-    if (!isOptionalUrlValid(twitter)) return "X URL is invalid.";
-    if (!isOptionalUrlValid(telegram)) return "Telegram URL is invalid.";
     if (provider === "pumpportal" && imageFile && imageFile.size > MAX_IMAGE_BYTES) {
       return "Image must be 4 MB or smaller.";
     }
@@ -140,18 +246,19 @@ export function TokenLaunch({
     existingTokenMint,
     imageFile,
     provider,
-    telegram,
     tokenName,
     tokenSymbol,
-    twitter,
-    website,
   ]);
+
+  const hasLaunchImage =
+    provider !== "pumpportal" || Boolean(imageFile) || Boolean(passportImageDataUrl);
 
   const canLaunch =
     !existingTokenMint &&
     tokenName.trim().length >= 2 &&
     tokenSymbol.trim().length >= 2 &&
     description.trim().length >= 10 &&
+    hasLaunchImage &&
     !validationError &&
     !launchDisabledReason &&
     step === "idle";
@@ -178,12 +285,17 @@ export function TokenLaunch({
       const gateThreshold = Number(tokenGateThreshold || "0");
 
       if (provider === "pumpportal") {
-        if (!imageFile) {
-          throw new Error("A token image is required for the bonding-curve launch.");
+        let imageDataUrl: string | null = null;
+        if (passportImageDataUrl) {
+          imageDataUrl = passportImageDataUrl;
+        } else if (imageFile) {
+          imageDataUrl = await fileToDataUrl(imageFile);
+        }
+        if (!imageDataUrl) {
+          throw new Error("Token image is required to launch this agent.");
         }
 
         setStep("preparing");
-        const imageDataUrl = await fileToDataUrl(imageFile);
         const prepareResponse = await fetch(
           `/api/agents/${agentId}/launch-token`,
           {
@@ -197,9 +309,6 @@ export function TokenLaunch({
               tokenName,
               tokenSymbol,
               description,
-              website,
-              twitter,
-              telegram,
               imageDataUrl,
               devBuySol: 0.01,
               tokenGateThreshold: gateThreshold,
@@ -332,16 +441,19 @@ export function TokenLaunch({
     }
   };
 
+  const socialsPreview = `Socials on chain: ${brandSiteLabel(EMERGN_SITE)} · ${brandHandleLabel(EMERGN_X_HANDLE)} · createdOn ${brandSiteLabel(EMERGN_SITE)}`;
+
   return (
     <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-5 sm:p-6">
       <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div className="min-w-0">
           <h2 className="font-headline text-sm font-bold uppercase tracking-[0.1em] text-neural-white sm:tracking-[0.15em]">
-            Token Launch
+            EMERGN. Token Launch
           </h2>
           <p className="mt-1 font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-neural-white/35 sm:tracking-[0.12em]">
-            Issue an Agent Passport first if you want verified ownership before
-            the token goes live.
+            Mint your agent as an on-chain token. Socials and origin are stamped
+            with EMERGN. branding — your personal handle is never written
+            on-chain.
           </p>
         </div>
         {agentToken ? (
@@ -449,29 +561,6 @@ export function TokenLaunch({
             disabled={Boolean(launchDisabledReason) || step !== "idle"}
             className="h-24 w-full border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
           />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <input
-              value={website}
-              onChange={(event) => setWebsite(event.target.value)}
-              placeholder="Website (optional)"
-              disabled={Boolean(launchDisabledReason) || step !== "idle"}
-              className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
-            />
-            <input
-              value={twitter}
-              onChange={(event) => setTwitter(event.target.value)}
-              placeholder="X URL (optional)"
-              disabled={Boolean(launchDisabledReason) || step !== "idle"}
-              className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
-            />
-            <input
-              value={telegram}
-              onChange={(event) => setTelegram(event.target.value)}
-              placeholder="Telegram URL (optional)"
-              disabled={Boolean(launchDisabledReason) || step !== "idle"}
-              className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
-            />
-          </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <select
@@ -504,13 +593,60 @@ export function TokenLaunch({
               <input
                 type="file"
                 accept="image/*"
-                disabled={Boolean(launchDisabledReason) || step !== "idle"}
-                onChange={(event) =>
-                  setImageFile(event.target.files?.[0] ?? null)
+                disabled={
+                  Boolean(launchDisabledReason) ||
+                  step !== "idle" ||
+                  usingPassportImage
                 }
+                onChange={(event) => {
+                  setImageFile(event.target.files?.[0] ?? null);
+                  if (event.target.files?.[0]) {
+                    setUsingPassportImage(false);
+                    setPassportImageDataUrl(null);
+                  }
+                }}
                 className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none file:mr-3 file:border-0 file:bg-transparent file:font-mono file:text-xs file:uppercase file:tracking-[0.08em] file:text-neural-white/50 sm:file:tracking-[0.12em]"
               />
             )}
+          </div>
+
+          {provider === "pumpportal" && passportReady ? (
+            <div className="flex flex-col gap-2 border border-pulse-cyan/20 bg-pulse-cyan/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-neural-white/55 sm:tracking-[0.12em]">
+                {usingPassportImage
+                  ? "Using the agent's passport image for this launch."
+                  : "Skip the upload — reuse the agent's passport image."}
+              </p>
+              {usingPassportImage ? (
+                <button
+                  type="button"
+                  onClick={handleClearPassportImage}
+                  disabled={Boolean(launchDisabledReason) || step !== "idle"}
+                  className="border border-pulse-cyan/30 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-pulse-cyan hover:bg-pulse-cyan/10 sm:tracking-[0.12em]"
+                >
+                  Clear passport image
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleUsePassportImage}
+                  disabled={
+                    Boolean(launchDisabledReason) ||
+                    step !== "idle" ||
+                    passportLoading
+                  }
+                  className="border border-pulse-cyan/30 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-pulse-cyan hover:bg-pulse-cyan/10 sm:tracking-[0.12em]"
+                >
+                  {passportLoading ? "Loading..." : "Use passport image"}
+                </button>
+              )}
+            </div>
+          ) : null}
+
+          <div className="border border-ghost-gray/20 bg-void-black p-3">
+            <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-neural-white/55 sm:tracking-[0.12em]">
+              {socialsPreview}
+            </p>
           </div>
 
           {validationError ? (
@@ -527,7 +663,9 @@ export function TokenLaunch({
             onClick={handleLaunch}
             className="w-full sm:w-auto"
           >
-            {step === "idle" || step === "done" ? "Launch Token" : "Launching..."}
+            {step === "idle" || step === "done"
+              ? "Launch Agent Token"
+              : "Launching..."}
           </Button>
         </div>
       )}
