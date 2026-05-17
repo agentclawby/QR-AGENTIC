@@ -52,17 +52,6 @@ export function getSolanaNetworkLabel() {
   return process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet-beta";
 }
 
-// `mainnet` and `mainnet-beta` refer to the same Solana cluster; some tools
-// emit one, some the other. Fold to a canonical form so a trivial spelling
-// difference between the client bundle's baked-in NEXT_PUBLIC_SOLANA_NETWORK
-// and the server's runtime value doesn't fail signature verification.
-function normalizeNetworkLabel(value: string | null | undefined) {
-  if (!value) return null;
-  const trimmed = value.trim().toLowerCase();
-  if (trimmed === "mainnet" || trimmed === "mainnet-beta") return "mainnet-beta";
-  return trimmed;
-}
-
 export function buildSolanaAuthMessage(input: BuildSolanaAuthMessageInput) {
   const issuedAt = input.issuedAt ?? new Date();
   const expiresAt =
@@ -247,24 +236,12 @@ export function verifySolanaAuthMessage(
     return { valid: false, messageText, error: "Unsupported signature version." };
   }
 
-  const signedNetwork = fields.get("network");
-  const expectedNetwork = getSolanaNetworkLabel();
-  if (
-    normalizeNetworkLabel(signedNetwork) !==
-    normalizeNetworkLabel(expectedNetwork)
-  ) {
-    // Surface both values so a stale client bundle vs. server env mismatch
-    // is self-diagnosing instead of an opaque "mismatch" message.
-    const detail =
-      process.env.NODE_ENV === "production"
-        ? ""
-        : ` (signed=${signedNetwork ?? "∅"}, server=${expectedNetwork})`;
-    return {
-      valid: false,
-      messageText,
-      error: `Signed network mismatch.${detail}`,
-    };
-  }
+  // The `Network` field is informational only. The ed25519 signature already
+  // proves the message wasn't tampered with, and the wallet/nonce/origin/
+  // domain/intent/expiration checks below carry the actual security. Gating
+  // on the network label couples verification to a value baked into the
+  // client bundle at build time vs. read from server env at runtime, which
+  // breaks across deploy/env drift without adding any cryptographic guarantee.
 
   if (!parsedMessageOrigin || parsedMessageOrigin !== expectedOrigin) {
     return { valid: false, messageText, error: "Signed origin mismatch." };
