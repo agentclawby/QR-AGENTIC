@@ -172,8 +172,10 @@ export function TokenLaunch({
   const [passportImageDataUrl, setPassportImageDataUrl] = useState<string | null>(
     null,
   );
-  const [usingPassportImage, setUsingPassportImage] = useState(false);
-  const [passportLoading, setPassportLoading] = useState(false);
+  const [passportImageError, setPassportImageError] = useState<string | null>(
+    null,
+  );
+  const [showImageOverride, setShowImageOverride] = useState(false);
   const [tokenGateThreshold, setTokenGateThreshold] = useState("0");
   const [directSupply, setDirectSupply] = useState("1000000000");
   const [step, setStep] = useState<LaunchStep>("idle");
@@ -190,6 +192,43 @@ export function TokenLaunch({
     if (!description && defaultDescription) setDescription(defaultDescription);
   }, [defaultDescription, description]);
 
+  const passportReady =
+    Boolean(agentPassportImageUrl) && agentPassportImageStatus === "ready";
+
+  useEffect(() => {
+    if (!passportReady || !agentPassportImageUrl) return;
+    if (passportImageDataUrl || imageFile) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(agentPassportImageUrl);
+        if (!response.ok) throw new Error("Failed to load passport image");
+        const blob = await response.blob();
+        if (blob.size > MAX_IMAGE_BYTES) {
+          throw new Error("Passport image exceeds 4 MB launch limit");
+        }
+        const dataUrl = await blobToDataUrl(blob);
+        if (!cancelled) {
+          setPassportImageDataUrl(dataUrl);
+          setPassportImageError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPassportImageError(
+            error instanceof Error
+              ? error.message
+              : "Failed to load passport image",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [passportReady, agentPassportImageUrl, passportImageDataUrl, imageFile]);
+
   const walletMismatch =
     publicKey &&
     linkedWalletAddress &&
@@ -201,36 +240,6 @@ export function TokenLaunch({
     (!linkedWalletAddress
       ? "Link your owner wallet in Settings before launching a token."
       : walletMismatch);
-
-  const passportReady =
-    Boolean(agentPassportImageUrl) && agentPassportImageStatus === "ready";
-
-  const handleUsePassportImage = async () => {
-    if (!agentPassportImageUrl) return;
-    setPassportLoading(true);
-    setStatus(null);
-    try {
-      const response = await fetch(agentPassportImageUrl);
-      if (!response.ok) throw new Error("Failed to load passport image");
-      const blob = await response.blob();
-      if (blob.size > MAX_IMAGE_BYTES) {
-        throw new Error("Passport image exceeds 4 MB launch limit");
-      }
-      const dataUrl = await blobToDataUrl(blob);
-      setPassportImageDataUrl(dataUrl);
-      setUsingPassportImage(true);
-      setImageFile(null);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to load passport image");
-    } finally {
-      setPassportLoading(false);
-    }
-  };
-
-  const handleClearPassportImage = () => {
-    setPassportImageDataUrl(null);
-    setUsingPassportImage(false);
-  };
 
   const validationError = useMemo(() => {
     if (existingTokenMint) return null;
@@ -590,57 +599,63 @@ export function TokenLaunch({
                 className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
               />
             ) : (
-              <input
-                type="file"
-                accept="image/*"
-                disabled={
-                  Boolean(launchDisabledReason) ||
-                  step !== "idle" ||
-                  usingPassportImage
-                }
-                onChange={(event) => {
-                  setImageFile(event.target.files?.[0] ?? null);
-                  if (event.target.files?.[0]) {
-                    setUsingPassportImage(false);
-                    setPassportImageDataUrl(null);
-                  }
-                }}
-                className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none file:mr-3 file:border-0 file:bg-transparent file:font-mono file:text-xs file:uppercase file:tracking-[0.08em] file:text-neural-white/50 sm:file:tracking-[0.12em]"
-              />
+              <div className="flex items-center border border-ghost-gray/20 bg-void-black px-4 py-3 font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/55 sm:tracking-[0.12em]">
+                {passportImageDataUrl
+                  ? "Logo: passport image"
+                  : passportReady
+                    ? "Loading passport..."
+                    : imageFile
+                      ? `Logo: ${imageFile.name.slice(0, 24)}`
+                      : "Logo: awaiting passport"}
+              </div>
             )}
           </div>
 
-          {provider === "pumpportal" && passportReady ? (
-            <div className="flex flex-col gap-2 border border-pulse-cyan/20 bg-pulse-cyan/5 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-neural-white/55 sm:tracking-[0.12em]">
-                {usingPassportImage
-                  ? "Using the agent's passport image for this launch."
-                  : "Skip the upload — reuse the agent's passport image."}
-              </p>
-              {usingPassportImage ? (
+          {provider === "pumpportal" && passportImageDataUrl ? (
+            <div className="flex items-center gap-3 border border-pulse-cyan/20 bg-pulse-cyan/5 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={passportImageDataUrl}
+                alt="Token logo"
+                className="h-12 w-12 border border-pulse-cyan/30 object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]">
+                  Passport image attached as token logo
+                </p>
                 <button
                   type="button"
-                  onClick={handleClearPassportImage}
+                  onClick={() => setShowImageOverride((value) => !value)}
                   disabled={Boolean(launchDisabledReason) || step !== "idle"}
-                  className="border border-pulse-cyan/30 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-pulse-cyan hover:bg-pulse-cyan/10 sm:tracking-[0.12em]"
+                  className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/40 hover:text-neural-white/70 sm:tracking-[0.12em]"
                 >
-                  Clear passport image
+                  {showImageOverride ? "Cancel override" : "Override with custom image"}
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleUsePassportImage}
-                  disabled={
-                    Boolean(launchDisabledReason) ||
-                    step !== "idle" ||
-                    passportLoading
-                  }
-                  className="border border-pulse-cyan/30 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-pulse-cyan hover:bg-pulse-cyan/10 sm:tracking-[0.12em]"
-                >
-                  {passportLoading ? "Loading..." : "Use passport image"}
-                </button>
-              )}
+              </div>
             </div>
+          ) : null}
+
+          {provider === "pumpportal" && passportImageError && !passportImageDataUrl ? (
+            <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ember-orange sm:tracking-[0.12em]">
+              {passportImageError} — upload a custom logo below.
+            </p>
+          ) : null}
+
+          {provider === "pumpportal" && (!passportImageDataUrl || showImageOverride) ? (
+            <input
+              type="file"
+              accept="image/*"
+              disabled={Boolean(launchDisabledReason) || step !== "idle"}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setImageFile(file);
+                if (file) {
+                  setPassportImageDataUrl(null);
+                  setShowImageOverride(false);
+                }
+              }}
+              className="w-full border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none file:mr-3 file:border-0 file:bg-transparent file:font-mono file:text-xs file:uppercase file:tracking-[0.08em] file:text-neural-white/50 sm:file:tracking-[0.12em]"
+            />
           ) : null}
 
           <div className="border border-ghost-gray/20 bg-void-black p-3">
