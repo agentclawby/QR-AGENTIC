@@ -155,6 +155,32 @@ export async function POST(
           );
         }
 
+        // Pre-flight: confirm the launching wallet has enough SOL to cover
+        // the create transaction + optional dev buy + Solana network fees.
+        // PumpPortal's /api/trade-local returns an opaque 400 when the
+        // wallet is under-funded; catching it here gives the user a clear
+        // actionable message instead of "transaction preparation failed".
+        try {
+          const connection = getSolanaConnection();
+          const { PublicKey } = await import("@solana/web3.js");
+          const balanceLamports = await connection.getBalance(
+            new PublicKey(body.walletPublicKey),
+          );
+          const balanceSol = balanceLamports / 1_000_000_000;
+          const required = body.devBuySol + 0.005; // create tx + Solana fees
+          if (balanceSol < required) {
+            return NextResponse.json(
+              {
+                error: `Your launching wallet needs at least ${required.toFixed(3)} SOL on Solana mainnet (currently ${balanceSol.toFixed(4)} SOL). Fund ${body.walletPublicKey.slice(0, 6)}...${body.walletPublicKey.slice(-4)} and try again.`,
+              },
+              { status: 402 },
+            );
+          }
+        } catch (preflightError) {
+          console.error("[launch] balance preflight failed:", preflightError);
+          // Non-fatal — fall through to PumpPortal which will return its own error.
+        }
+
         const prepared = await prepareAgentTokenLaunch({
           walletPublicKey: body.walletPublicKey,
           mintPublicKey: body.mintPublicKey,

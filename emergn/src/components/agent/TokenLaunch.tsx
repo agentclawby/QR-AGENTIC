@@ -386,7 +386,7 @@ export function TokenLaunch({
             tokenSymbol,
             description,
             imageDataUrl: passportImageDataUrl,
-            devBuySol: 0.01,
+            devBuySol: 0,
             tokenGateThreshold,
           }),
         },

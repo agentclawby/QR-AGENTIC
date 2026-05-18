@@ -17,7 +17,24 @@ import { AgentPassportPanel } from "@/components/agent/AgentPassportPanel";
 import { AgentSettings } from "@/components/agent/AgentSettings";
 import { AgentPersona } from "@/components/agent/AgentPersona";
 import { TokenInfo } from "@/components/agent/TokenInfo";
-import { TokenLaunch } from "@/components/agent/TokenLaunch";
+import dynamic from "next/dynamic";
+
+const TokenLaunch = dynamic(
+  () =>
+    import("@/components/agent/TokenLaunch").then((mod) => ({
+      default: mod.TokenLaunch,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="border border-ghost-gray/20 bg-ghost-gray/5 p-5 sm:p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/40 sm:tracking-[0.12em]">
+          Loading token launch...
+        </p>
+      </div>
+    ),
+  },
+);
 import { TrainingModuleCard } from "@/components/training/TrainingModuleCard";
 import { AgentCreditStrip } from "@/components/agent/AgentCreditStrip";
 import { RetrainFromXCard } from "@/components/agent/RetrainFromXCard";
