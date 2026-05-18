@@ -18,6 +18,7 @@ import { extractXPersonality } from "@/lib/ai/personality-extractor";
 import { clampScore } from "@/lib/sentience/calculator";
 import {
   checkUserRateLimit,
+  rateLimitHeaders,
   rateLimitMetadata,
   RateLimitedError,
 } from "@/lib/rate-limit";
@@ -55,7 +56,8 @@ export async function POST(
       );
     }
 
-    await checkUserRateLimit(admin, user.id, "x_ingest");
+    const limitInfo = await checkUserRateLimit(admin, user.id, "x_ingest");
+    const limitResponseHeaders = rateLimitHeaders(limitInfo);
     await assertUsageWithinLimit(admin, user.id, "x_calls");
 
     const [{ data: agent }, { data: profile }, { data: scores }] =
@@ -108,10 +110,10 @@ export async function POST(
       profile.x_handle,
       TWEETS_PER_RETRAIN,
     );
-    if (tweetResult.normalized.length < 10) {
+    if (tweetResult.normalized.length < 1) {
       return NextResponse.json(
         {
-          error: `Only ${tweetResult.normalized.length} usable X posts found. Need at least 10 to retrain.`,
+          error: `No usable X posts found for @${profile.x_handle}. The indexer may not have crawled your tweets yet — try again later.`,
         },
         { status: 400 },
       );
@@ -172,12 +174,15 @@ export async function POST(
     await recordUsage(admin, user.id, "trainings", 1);
     await recordUsage(admin, user.id, "anthropic_tokens", 4500);
 
-    return NextResponse.json({
-      success: true,
-      summary: `Retrained on ${tweetResult.normalized.length} of your latest X posts. Influence +${INFLUENCE_BOOST}.`,
-      tweetsAnalyzed: tweetResult.normalized.length,
-      credits,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        summary: `Retrained on ${tweetResult.normalized.length} of your latest X posts. Influence +${INFLUENCE_BOOST}.`,
+        tweetsAnalyzed: tweetResult.normalized.length,
+        credits,
+      },
+      { headers: limitResponseHeaders },
+    );
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
       return NextResponse.json({ error: error.message }, { status: 402 });
@@ -200,7 +205,10 @@ export async function POST(
         },
         {
           status: 429,
-          headers: { "Retry-After": String(error.retryAfterSeconds) },
+          headers: {
+            "Retry-After": String(error.retryAfterSeconds),
+            "RateLimit-Reset": String(error.retryAfterSeconds),
+          },
         },
       );
     }

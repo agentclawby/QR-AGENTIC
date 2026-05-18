@@ -206,7 +206,34 @@ export function createTokenLaunchCanaryList() {
   return { open: false, entries };
 }
 
+/**
+ * Guard against an accidentally-open allowlist in production. `*` means "any
+ * wallet can launch a token" — that's only safe when explicitly intended.
+ * Pair with `ALLOW_OPEN_TOKEN_LAUNCH=true` to confirm.
+ *
+ * Returns null when safe; returns a human-readable reason string when the
+ * configuration would silently allow open launches in production.
+ */
+export function assertTokenLaunchAllowlistSafe(): string | null {
+  if (process.env.NODE_ENV !== "production") return null;
+  const raw = process.env.TOKEN_LAUNCH_ALLOWLIST?.trim();
+  if (raw !== "*") return null;
+  if (process.env.ALLOW_OPEN_TOKEN_LAUNCH === "true") return null;
+  return (
+    "TOKEN_LAUNCH_ALLOWLIST is '*' in production. Set ALLOW_OPEN_TOKEN_LAUNCH=true " +
+    "to confirm open launches are intended, or replace '*' with a canary list."
+  );
+}
+
 export function isTokenLaunchAllowed(walletAddress: string | null) {
+  // Refuse open launches in production unless explicitly co-confirmed, even
+  // if TOKEN_LAUNCH_ALLOWLIST is set to "*". The caller will surface the
+  // reason via `assertTokenLaunchAllowlistSafe()`.
+  const productionMisconfig = assertTokenLaunchAllowlistSafe();
+  if (productionMisconfig) {
+    console.error("[launch] refusing to launch:", productionMisconfig);
+    return false;
+  }
   const allowlist = createTokenLaunchCanaryList();
   if (allowlist.open) return true;
   if (!walletAddress) return false;

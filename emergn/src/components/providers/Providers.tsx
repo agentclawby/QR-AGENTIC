@@ -7,6 +7,7 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
+import { ToastProvider } from "@/components/ui/Toaster";
 
 // Import wallet adapter default styles (overridden by our global border-radius: 0)
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -30,7 +31,9 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>{children}</WalletModalProvider>
+        <WalletModalProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );

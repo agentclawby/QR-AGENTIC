@@ -24,12 +24,19 @@ import {
 import { getSplTokenBalanceForOwner } from "@/lib/solana/token-balance";
 import {
   checkUserRateLimit,
+  rateLimitHeaders,
   rateLimitMetadata,
   RateLimitedError,
 } from "@/lib/rate-limit";
+import { sanitizeUserPrompt } from "@/lib/ai/sanitize";
 
 const consultSchema = z.object({
-  query: z.string().trim().min(8).max(1000),
+  query: z
+    .string()
+    .trim()
+    .min(8)
+    .max(1000)
+    .transform((value) => sanitizeUserPrompt(value)),
   isPremium: z.boolean().optional().default(false),
 });
 
@@ -59,7 +66,8 @@ export async function POST(
 
     const body = consultSchema.parse(await request.json());
 
-    await checkUserRateLimit(admin, user.id, "consult");
+    const limitInfo = await checkUserRateLimit(admin, user.id, "consult");
+    const limitResponseHeaders = rateLimitHeaders(limitInfo);
     await assertUsageWithinLimit(admin, user.id, "consults");
 
     const [{ data: profile }, { data: agent }] = await Promise.all([
@@ -171,12 +179,15 @@ export async function POST(
     // Approx 3k tokens per consult (Claude Sonnet 4 input+output blend).
     await recordUsage(admin, user.id, "anthropic_tokens", 3000);
 
-    return NextResponse.json({
-      success: true,
-      post,
-      accessMode,
-      credits,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        post,
+        accessMode,
+        credits,
+      },
+      { headers: limitResponseHeaders },
+    );
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
       return NextResponse.json({ error: error.message }, { status: 402 });
@@ -194,7 +205,13 @@ export async function POST(
             error.retryAfterSeconds / 60
           )} minutes.`,
         },
-        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } }
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(error.retryAfterSeconds),
+            "RateLimit-Reset": String(error.retryAfterSeconds),
+          },
+        }
       );
     }
     console.error("Consultation error:", error);

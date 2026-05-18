@@ -24,12 +24,19 @@ import {
 } from "@/lib/usage";
 import {
   checkUserRateLimit,
+  rateLimitHeaders,
   rateLimitMetadata,
   RateLimitedError,
 } from "@/lib/rate-limit";
+import { sanitizeUserPrompt } from "@/lib/ai/sanitize";
 
 const contentSchema = z.object({
-  topic: z.string().trim().min(3).max(500),
+  topic: z
+    .string()
+    .trim()
+    .min(3)
+    .max(500)
+    .transform((value) => sanitizeUserPrompt(value)),
   format: z.enum(["tweet", "thread"]).default("tweet"),
 });
 
@@ -59,7 +66,8 @@ export async function POST(
 
     const body = contentSchema.parse(await request.json());
 
-    await checkUserRateLimit(admin, user.id, "content");
+    const limitInfo = await checkUserRateLimit(admin, user.id, "content");
+    const limitResponseHeaders = rateLimitHeaders(limitInfo);
     await assertNotSuspended(admin, user.id);
 
     const { data: agent } = await admin
@@ -137,13 +145,16 @@ export async function POST(
     // is enough to drive the cost dashboard and quota gates.
     await recordUsage(admin, user.id, "anthropic_tokens", 3000);
 
-    return NextResponse.json({
-      success: true,
-      draft,
-      title: generated.title,
-      notes: generated.notes,
-      credits,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        draft,
+        title: generated.title,
+        notes: generated.notes,
+        credits,
+      },
+      { headers: limitResponseHeaders },
+    );
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
       return NextResponse.json({ error: error.message }, { status: 402 });
@@ -161,7 +172,13 @@ export async function POST(
             error.retryAfterSeconds / 60
           )} minutes.`,
         },
-        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } }
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(error.retryAfterSeconds),
+            "RateLimit-Reset": String(error.retryAfterSeconds),
+          },
+        }
       );
     }
     console.error("Generate content error:", error);

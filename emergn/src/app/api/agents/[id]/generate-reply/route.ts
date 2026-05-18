@@ -24,12 +24,19 @@ import {
 } from "@/lib/usage";
 import {
   checkUserRateLimit,
+  rateLimitHeaders,
   rateLimitMetadata,
   RateLimitedError,
 } from "@/lib/rate-limit";
+import { sanitizeUserPrompt } from "@/lib/ai/sanitize";
 
 const replySchema = z.object({
-  targetTweet: z.string().trim().min(3).max(1200),
+  targetTweet: z
+    .string()
+    .trim()
+    .min(3)
+    .max(1200)
+    .transform((value) => sanitizeUserPrompt(value)),
   targetAuthor: z.string().trim().max(80).optional().nullable(),
   inReplyToTweetId: z
     .string()
@@ -40,7 +47,12 @@ const replySchema = z.object({
   intent: z
     .enum(["agree", "disagree", "add-context", "ask-question", "thank", "freeform"])
     .default("freeform"),
-  extraNotes: z.string().trim().max(400).optional(),
+  extraNotes: z
+    .string()
+    .trim()
+    .max(400)
+    .optional()
+    .transform((value) => (value ? sanitizeUserPrompt(value) : value)),
 });
 
 export async function POST(
@@ -71,7 +83,8 @@ export async function POST(
 
     // Reuse the content rate-limit bucket — replies and content are the same
     // class of action from a load perspective.
-    await checkUserRateLimit(admin, user.id, "content");
+    const limitInfo = await checkUserRateLimit(admin, user.id, "content");
+    const limitResponseHeaders = rateLimitHeaders(limitInfo);
     await assertNotSuspended(admin, user.id);
 
     const { data: agent } = await admin
@@ -158,12 +171,15 @@ export async function POST(
     // shorter completion). 1.2k tokens is a fair blended estimate.
     await recordUsage(admin, user.id, "anthropic_tokens", 1200);
 
-    return NextResponse.json({
-      success: true,
-      draft,
-      notes: generated.notes,
-      credits,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        draft,
+        notes: generated.notes,
+        credits,
+      },
+      { headers: limitResponseHeaders },
+    );
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
       return NextResponse.json({ error: error.message }, { status: 402 });
@@ -181,7 +197,13 @@ export async function POST(
             error.retryAfterSeconds / 60
           )} minutes.`,
         },
-        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } }
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(error.retryAfterSeconds),
+            "RateLimit-Reset": String(error.retryAfterSeconds),
+          },
+        }
       );
     }
     console.error("Generate reply error:", error);
