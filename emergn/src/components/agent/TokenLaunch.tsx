@@ -14,9 +14,80 @@ interface TokenLaunchProps {
   disabledReason?: string | null;
   agentName?: string | null;
   agentCodename?: string | null;
+  agentArchetype?: string | null;
   agentPersonalitySummary?: string | null;
   agentPassportImageUrl?: string | null;
-  agentPassportImageStatus?: string | null;
+}
+
+const ARCHETYPE_GLYPHS: Record<string, { color: string; glyph: string }> = {
+  ORACLE: { color: "#00F0FF", glyph: "◉" },
+  HUNTER: { color: "#FF6B35", glyph: "◤" },
+  SENTINEL: { color: "#8B5CF6", glyph: "◇" },
+  DIPLOMAT: { color: "#E8E6E3", glyph: "◈" },
+  GHOST: { color: "#6B7280", glyph: "◐" },
+  EVOLVE: { color: "#00B4D8", glyph: "◎" },
+};
+
+function renderFallbackLogoDataUrl(
+  agentName: string,
+  agentCodename: string,
+  archetype: string,
+): string | null {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  const accent = ARCHETYPE_GLYPHS[archetype]?.color ?? "#00F0FF";
+  const glyph = ARCHETYPE_GLYPHS[archetype]?.glyph ?? "◇";
+
+  // Background
+  ctx.fillStyle = "#0A0A0F";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle border + accent rail
+  ctx.strokeStyle = "rgba(232,230,227,0.12)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(8, 8, 496, 496);
+  ctx.fillStyle = accent;
+  ctx.fillRect(8, 8, 4, 496);
+
+  // Archetype glyph (very large, faint, behind text)
+  ctx.fillStyle = `${accent}33`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 360px 'Space Grotesk', system-ui, sans-serif";
+  ctx.fillText(glyph, 256, 240);
+
+  // EMERGN. tag (top right, mono)
+  ctx.fillStyle = "rgba(232,230,227,0.45)";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "top";
+  ctx.font = "12px 'JetBrains Mono', ui-monospace, monospace";
+  ctx.fillText("EMERGN.", 488, 28);
+
+  // Agent name
+  ctx.fillStyle = "#E8E6E3";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 64px 'Space Grotesk', system-ui, sans-serif";
+  const name = (agentName || "AGENT").toUpperCase().slice(0, 18);
+  ctx.fillText(name, 256, 320);
+
+  // Codename / archetype line
+  ctx.fillStyle = "rgba(232,230,227,0.55)";
+  ctx.font = "20px 'JetBrains Mono', ui-monospace, monospace";
+  const sub = `${agentCodename || ""}${agentCodename && archetype ? " // " : ""}${archetype}`.toUpperCase();
+  ctx.fillText(sub.slice(0, 36), 256, 372);
+
+  // Bottom signature
+  ctx.fillStyle = accent;
+  ctx.font = "10px 'JetBrains Mono', ui-monospace, monospace";
+  ctx.fillText("LAUNCHED VIA EMERGN.ORG", 256, 472);
+
+  return canvas.toDataURL("image/png");
 }
 
 type LaunchStep = "idle" | "preparing" | "signing" | "confirming" | "done";
@@ -109,9 +180,9 @@ export function TokenLaunch({
   disabledReason = null,
   agentName = null,
   agentCodename = null,
+  agentArchetype = null,
   agentPersonalitySummary = null,
   agentPassportImageUrl = null,
-  agentPassportImageStatus = null,
 }: TokenLaunchProps) {
   const router = useRouter();
   const { connection } = useConnection();
@@ -165,42 +236,64 @@ export function TokenLaunch({
     if (!description && defaultDescription) setDescription(defaultDescription);
   }, [defaultDescription, description]);
 
-  const passportReady =
-    Boolean(agentPassportImageUrl) && agentPassportImageStatus === "ready";
+  const [logoSource, setLogoSource] = useState<"passport" | "fallback" | null>(
+    null,
+  );
 
   useEffect(() => {
-    if (!passportReady || !agentPassportImageUrl) return;
     if (passportImageDataUrl) return;
-
     let cancelled = false;
+
     (async () => {
-      try {
-        const response = await fetch(agentPassportImageUrl);
-        if (!response.ok) throw new Error("Failed to load passport image");
-        const blob = await response.blob();
-        if (blob.size > MAX_IMAGE_BYTES) {
-          throw new Error("Passport image exceeds 4 MB launch limit");
+      // First choice: the agent's passport image (Higgsfield render).
+      // We use it whenever the URL is set, regardless of *_status, because
+      // the status field can lag behind the URL being populated.
+      if (agentPassportImageUrl) {
+        try {
+          const response = await fetch(agentPassportImageUrl);
+          if (!response.ok) throw new Error("passport image fetch failed");
+          const blob = await response.blob();
+          if (blob.size > MAX_IMAGE_BYTES) {
+            throw new Error("passport image too large");
+          }
+          const dataUrl = await blobToDataUrl(blob);
+          if (!cancelled) {
+            setPassportImageDataUrl(dataUrl);
+            setLogoSource("passport");
+            setPassportImageError(null);
+          }
+          return;
+        } catch (error) {
+          console.warn("[launch] passport image unavailable, falling back to generated logo", error);
         }
-        const dataUrl = await blobToDataUrl(blob);
-        if (!cancelled) {
-          setPassportImageDataUrl(dataUrl);
-          setPassportImageError(null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setPassportImageError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load passport image",
-          );
-        }
+      }
+
+      // Fallback: render a clean EMERGN.-branded canvas logo from agent
+      // identity. Guarantees the launch is never blocked by a missing image.
+      const fallback = renderFallbackLogoDataUrl(
+        agentName ?? "",
+        agentCodename ?? "",
+        (agentArchetype ?? "GHOST").toUpperCase(),
+      );
+      if (!cancelled && fallback) {
+        setPassportImageDataUrl(fallback);
+        setLogoSource("fallback");
+        setPassportImageError(null);
+      } else if (!cancelled) {
+        setPassportImageError("Could not prepare a token logo");
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [passportReady, agentPassportImageUrl, passportImageDataUrl]);
+  }, [
+    agentArchetype,
+    agentCodename,
+    agentName,
+    agentPassportImageUrl,
+    passportImageDataUrl,
+  ]);
 
   const walletMismatch =
     publicKey &&
@@ -222,13 +315,9 @@ export function TokenLaunch({
     return null;
   }, [description, existingTokenMint, tokenName, tokenSymbol]);
 
-  const passportBlocker = !passportReady
-    ? "Generate the agent's passport image before launching the token."
-    : !passportImageDataUrl && passportImageError
-      ? passportImageError
-      : !passportImageDataUrl
-        ? "Loading passport image..."
-        : null;
+  const passportBlocker = !passportImageDataUrl
+    ? passportImageError ?? "Preparing token logo..."
+    : null;
 
   const canLaunch =
     !existingTokenMint &&
@@ -238,7 +327,6 @@ export function TokenLaunch({
     Boolean(passportImageDataUrl) &&
     !validationError &&
     !launchDisabledReason &&
-    !passportBlocker &&
     step === "idle";
 
   const handleLaunch = async () => {
@@ -469,13 +557,15 @@ export function TokenLaunch({
               />
               <div className="min-w-0 flex-1">
                 <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]">
-                  Passport image attached as token logo
+                  {logoSource === "passport"
+                    ? "Passport image attached as token logo"
+                    : "EMERGN.-branded logo generated from agent identity"}
                 </p>
               </div>
             </div>
           ) : passportBlocker ? (
-            <div className="border border-ember-orange/30 bg-ember-orange/5 p-3">
-              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ember-orange sm:tracking-[0.12em]">
+            <div className="border border-pulse-cyan/30 bg-pulse-cyan/5 p-3">
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]">
                 {passportBlocker}
               </p>
             </div>

@@ -830,9 +830,9 @@ export function AgentProfile({
             disabledReason={gates.tokenLaunch.reason}
             agentName={agent.name}
             agentCodename={agent.codename}
+            agentArchetype={agent.archetype}
             agentPersonalitySummary={agent.personality_summary}
             agentPassportImageUrl={agent.passport_image_url}
-            agentPassportImageStatus={agent.passport_image_status}
           />
         </div>
       ) : null}
