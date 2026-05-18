@@ -193,10 +193,13 @@ export function TokenLaunch({
   const { connection } = useConnection();
   const { publicKey, signTransaction } = useWallet();
   const launched = agentToken?.status === "launched";
-  const inFlight =
-    agentToken?.status === "prepared" || agentToken?.status === "submitted";
+  // Only "submitted" (on-chain, awaiting confirm) blocks a re-launch.
+  // "prepared" and "failed" rows are stale leftovers and get overwritten
+  // on the next prepare call (route uses upsert on agent_id).
   const existingTokenMint =
-    agentToken && agentToken.status !== "failed" ? agentToken.token_mint : null;
+    agentToken?.status === "launched" || agentToken?.status === "submitted"
+      ? agentToken.token_mint
+      : null;
 
   const defaultTokenName = useMemo(
     () => (agentName ?? "").slice(0, 32),
@@ -447,9 +450,9 @@ export function TokenLaunch({
             on-chain.
           </p>
         </div>
-        {agentToken ? (
+        {launched ? (
           <span className="shrink-0 border border-pulse-cyan/30 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]">
-            {agentToken.status}
+            launched
           </span>
         ) : null}
       </div>
@@ -498,16 +501,6 @@ export function TokenLaunch({
             : "not linked"}
         </p>
         {disabledReason ? <p>{disabledReason}</p> : null}
-        {agentToken?.failure_reason ? (
-          <p className="text-ember-orange/70">{agentToken.failure_reason}</p>
-        ) : null}
-        {inFlight && !launched ? (
-          <p className="text-pulse-cyan/70">
-            A previous launch attempt is in flight ({agentToken!.status}). If
-            you signed a transaction earlier and lost the page, finish signing
-            in your wallet or contact support to clear the record.
-          </p>
-        ) : null}
       </div>
 
       {launched ? (
