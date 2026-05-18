@@ -34,7 +34,12 @@ function renderFallbackLogoDataUrl(
   archetype: string,
 ): string | null {
   if (typeof document === "undefined") return null;
-  const canvas = document.createElement("canvas");
+  let canvas: HTMLCanvasElement;
+  try {
+    canvas = document.createElement("canvas");
+  } catch {
+    return null;
+  }
   canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext("2d");
@@ -216,8 +221,21 @@ export function TokenLaunch({
   const [tokenName, setTokenName] = useState(defaultTokenName);
   const [tokenSymbol, setTokenSymbol] = useState(defaultTokenSymbol);
   const [description, setDescription] = useState(defaultDescription);
+
+  // Initialize the logo synchronously on mount. Canvas render is sync, so the
+  // launch button never has to wait for an async chain to enable. The async
+  // useEffect below only runs to UPGRADE this canvas logo to the real
+  // Higgsfield passport image (if one exists) — never to fall back from it.
   const [passportImageDataUrl, setPassportImageDataUrl] = useState<string | null>(
-    null,
+    () =>
+      renderFallbackLogoDataUrl(
+        agentName ?? "",
+        agentCodename ?? "",
+        (agentArchetype ?? "GHOST").toUpperCase(),
+      ),
+  );
+  const [logoSource, setLogoSource] = useState<"passport" | "fallback">(
+    "fallback",
   );
   const [passportImageError, setPassportImageError] = useState<string | null>(
     null,
@@ -236,53 +254,12 @@ export function TokenLaunch({
     if (!description && defaultDescription) setDescription(defaultDescription);
   }, [defaultDescription, description]);
 
-  const [logoSource, setLogoSource] = useState<"passport" | "fallback" | null>(
-    null,
-  );
-
+  // If canvas rendering somehow failed (rare — e.g. headless or browser
+  // restriction), fall back to the server-rendered PNG.
   useEffect(() => {
     if (passportImageDataUrl) return;
     let cancelled = false;
-
     (async () => {
-      // First choice: the agent's passport image (Higgsfield render).
-      // We use it whenever the URL is set, regardless of *_status, because
-      // the status field can lag behind the URL being populated.
-      if (agentPassportImageUrl) {
-        try {
-          const response = await fetch(agentPassportImageUrl);
-          if (!response.ok) throw new Error("passport image fetch failed");
-          const blob = await response.blob();
-          if (blob.size > MAX_IMAGE_BYTES) {
-            throw new Error("passport image too large");
-          }
-          const dataUrl = await blobToDataUrl(blob);
-          if (!cancelled) {
-            setPassportImageDataUrl(dataUrl);
-            setLogoSource("passport");
-            setPassportImageError(null);
-          }
-          return;
-        } catch (error) {
-          console.warn("[launch] passport image unavailable, falling back to generated logo", error);
-        }
-      }
-
-      // Fallback 2: render a clean EMERGN.-branded canvas logo client-side.
-      const canvasFallback = renderFallbackLogoDataUrl(
-        agentName ?? "",
-        agentCodename ?? "",
-        (agentArchetype ?? "GHOST").toUpperCase(),
-      );
-      if (!cancelled && canvasFallback) {
-        setPassportImageDataUrl(canvasFallback);
-        setLogoSource("fallback");
-        setPassportImageError(null);
-        return;
-      }
-
-      // Fallback 3: server-side rendered PNG (in case canvas is unavailable —
-      // e.g. older browsers, headless contexts). Always succeeds.
       try {
         const response = await fetch(`/api/agents/${agentId}/launch-logo`);
         if (!response.ok) throw new Error("server logo render failed");
@@ -291,73 +268,88 @@ export function TokenLaunch({
         if (!cancelled) {
           setPassportImageDataUrl(dataUrl);
           setLogoSource("fallback");
-          setPassportImageError(null);
         }
       } catch (error) {
         if (!cancelled) {
-          console.error("[launch] all logo fallbacks failed", error);
+          console.error("[launch] server logo render failed", error);
           setPassportImageError("Could not prepare a token logo");
         }
       }
     })();
-
     return () => {
       cancelled = true;
     };
-  }, [
-    agentArchetype,
-    agentCodename,
-    agentId,
-    agentName,
-    agentPassportImageUrl,
-    passportImageDataUrl,
-  ]);
+  }, [agentId, passportImageDataUrl]);
 
+  // If the agent has a real Higgsfield passport image, upgrade the canvas
+  // fallback to that. Failure here is silent — the canvas logo stays.
+  useEffect(() => {
+    if (!agentPassportImageUrl) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(agentPassportImageUrl);
+        if (!response.ok) throw new Error("passport image fetch failed");
+        const blob = await response.blob();
+        if (blob.size > MAX_IMAGE_BYTES) {
+          throw new Error("passport image too large");
+        }
+        const dataUrl = await blobToDataUrl(blob);
+        if (!cancelled) {
+          setPassportImageDataUrl(dataUrl);
+          setLogoSource("passport");
+        }
+      } catch (error) {
+        console.warn("[launch] real passport image unavailable, keeping canvas logo", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [agentPassportImageUrl]);
+
+  // Compute every individual blocker so the UI can surface a complete,
+  // honest list instead of silently disabling the button.
+  const connectedAddress = publicKey?.toBase58() ?? null;
   const walletMismatch =
-    publicKey &&
+    connectedAddress &&
     linkedWalletAddress &&
-    publicKey.toBase58() !== linkedWalletAddress
-      ? "The connected wallet does not match the linked owner wallet."
+    connectedAddress !== linkedWalletAddress
+      ? `Connected wallet ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)} does not match linked owner ${linkedWalletAddress.slice(0, 6)}...${linkedWalletAddress.slice(-4)}. Switch accounts in Phantom or relink in Settings.`
       : null;
-  const launchDisabledReason =
-    disabledReason ??
-    (!linkedWalletAddress
-      ? "Link your owner wallet in Settings before launching a token."
-      : walletMismatch);
 
-  const validationError = useMemo(() => {
-    if (existingTokenMint) return null;
-    if (tokenName.trim().length < 2) return null;
-    if (tokenSymbol.trim().length < 2) return null;
-    if (description.trim().length < 10) return null;
-    return null;
-  }, [description, existingTokenMint, tokenName, tokenSymbol]);
+  const blockers: string[] = [];
+  if (existingTokenMint) {
+    blockers.push("This agent already has a launched token");
+  }
+  if (disabledReason) blockers.push(disabledReason);
+  if (!linkedWalletAddress) {
+    blockers.push("Link your owner wallet in Settings → Linked Accounts first");
+  }
+  if (!connectedAddress) {
+    blockers.push("Connect your wallet in Phantom (top right of the page)");
+  }
+  if (walletMismatch) blockers.push(walletMismatch);
+  if (tokenName.trim().length < 2) blockers.push("Token name must be at least 2 characters");
+  if (tokenSymbol.trim().length < 2) blockers.push("Token symbol must be at least 2 characters");
+  if (description.trim().length < 10) blockers.push("Description must be at least 10 characters");
+  if (!passportImageDataUrl) {
+    blockers.push(passportImageError ?? "Token logo is still loading");
+  }
 
-  const passportBlocker = !passportImageDataUrl
-    ? passportImageError ?? "Preparing token logo..."
-    : null;
-
-  const canLaunch =
-    !existingTokenMint &&
-    tokenName.trim().length >= 2 &&
-    tokenSymbol.trim().length >= 2 &&
-    description.trim().length >= 10 &&
-    Boolean(passportImageDataUrl) &&
-    !validationError &&
-    !launchDisabledReason &&
-    step === "idle";
+  const canLaunch = blockers.length === 0 && step === "idle";
 
   const handleLaunch = async () => {
-    if (launchDisabledReason) {
-      setStatus(launchDisabledReason);
-      return;
-    }
-    if (validationError) {
-      setStatus(validationError);
+    if (blockers.length > 0) {
+      setStatus(blockers[0]);
       return;
     }
     if (!publicKey || !signTransaction) {
-      setStatus("Connect a signing wallet to launch a token.");
+      setStatus("Connect your wallet in Phantom to sign the launch transaction.");
+      return;
+    }
+    if (!passportImageDataUrl) {
+      setStatus("Token logo is still loading — try again in a moment.");
       return;
     }
 
@@ -365,10 +357,6 @@ export function TokenLaunch({
     setResultSignature(null);
 
     try {
-      if (!passportImageDataUrl) {
-        throw new Error("Passport image is required to launch this agent.");
-      }
-
       const mintKeypair = Keypair.generate();
 
       setStep("preparing");
@@ -509,7 +497,7 @@ export function TokenLaunch({
             ? `${linkedWalletAddress.slice(0, 6)}...${linkedWalletAddress.slice(-4)}`
             : "not linked"}
         </p>
-        {launchDisabledReason ? <p>{launchDisabledReason}</p> : null}
+        {disabledReason ? <p>{disabledReason}</p> : null}
         {agentToken?.failure_reason ? (
           <p className="text-ember-orange/70">{agentToken.failure_reason}</p>
         ) : null}
@@ -543,7 +531,7 @@ export function TokenLaunch({
               value={tokenName}
               onChange={(event) => setTokenName(event.target.value)}
               placeholder="Token name"
-              disabled={Boolean(launchDisabledReason) || step !== "idle"}
+              disabled={step !== "idle"}
               className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
             />
             <input
@@ -553,7 +541,7 @@ export function TokenLaunch({
               }
               placeholder="Symbol"
               maxLength={10}
-              disabled={Boolean(launchDisabledReason) || step !== "idle"}
+              disabled={step !== "idle"}
               className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
             />
           </div>
@@ -561,7 +549,7 @@ export function TokenLaunch({
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Describe the token and the agent behind it..."
-            disabled={Boolean(launchDisabledReason) || step !== "idle"}
+            disabled={step !== "idle"}
             className="h-24 w-full border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
           />
 
@@ -581,10 +569,10 @@ export function TokenLaunch({
                 </p>
               </div>
             </div>
-          ) : passportBlocker ? (
-            <div className="border border-pulse-cyan/30 bg-pulse-cyan/5 p-3">
-              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]">
-                {passportBlocker}
+          ) : passportImageError ? (
+            <div className="border border-ember-orange/30 bg-ember-orange/5 p-3">
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ember-orange sm:tracking-[0.12em]">
+                {passportImageError}
               </p>
             </div>
           ) : null}
@@ -595,22 +583,31 @@ export function TokenLaunch({
             </p>
           </div>
 
-          {validationError ? (
-            <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ember-orange sm:tracking-[0.12em]">
-              {validationError}
-            </p>
+          {blockers.length > 0 ? (
+            <div className="border border-ember-orange/30 bg-ember-orange/5 p-3">
+              <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ember-orange/80">
+                Before launching:
+              </p>
+              <ul className="space-y-1 font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ember-orange sm:tracking-[0.12em]">
+                {blockers.map((blocker, i) => (
+                  <li key={i}>· {blocker}</li>
+                ))}
+              </ul>
+            </div>
           ) : null}
 
           <Button
             variant="primary"
             size="sm"
-            disabled={!canLaunch}
+            disabled={step !== "idle" && step !== "done"}
             loading={step !== "idle" && step !== "done"}
             onClick={handleLaunch}
             className="w-full sm:w-auto"
           >
             {step === "idle" || step === "done"
-              ? "Launch Agent Token"
+              ? canLaunch
+                ? "Launch Agent Token"
+                : "Resolve issues above to launch"
               : "Launching..."}
           </Button>
         </div>
