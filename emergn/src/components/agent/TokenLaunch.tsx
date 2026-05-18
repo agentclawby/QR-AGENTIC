@@ -2,20 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Keypair,
-  SystemProgram,
-  Transaction,
-  VersionedTransaction,
-} from "@solana/web3.js";
-import {
-  MINT_SIZE,
-  TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountInstruction,
-  createInitializeMintInstruction,
-  createMintToInstruction,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
+import { Keypair, VersionedTransaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/Button";
 import type { AgentToken } from "@/types";
@@ -64,15 +51,6 @@ function brandSiteLabel(siteUrl: string) {
 function base64ToBytes(base64: string) {
   const binary = window.atob(base64);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
-
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Failed to read image file"));
-    reader.readAsDataURL(file);
-  });
 }
 
 function blobToDataUrl(blob: Blob) {
@@ -162,22 +140,17 @@ export function TokenLaunch({
     return DEFAULT_DESCRIPTION;
   }, [agentPersonalitySummary]);
 
-  const [provider, setProvider] = useState<"pumpportal" | "direct_spl">(
-    "pumpportal",
-  );
+  const provider = "pumpportal" as const;
+  const tokenGateThreshold = 0;
   const [tokenName, setTokenName] = useState(defaultTokenName);
   const [tokenSymbol, setTokenSymbol] = useState(defaultTokenSymbol);
   const [description, setDescription] = useState(defaultDescription);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [passportImageDataUrl, setPassportImageDataUrl] = useState<string | null>(
     null,
   );
   const [passportImageError, setPassportImageError] = useState<string | null>(
     null,
   );
-  const [showImageOverride, setShowImageOverride] = useState(false);
-  const [tokenGateThreshold, setTokenGateThreshold] = useState("0");
-  const [directSupply, setDirectSupply] = useState("1000000000");
   const [step, setStep] = useState<LaunchStep>("idle");
   const [status, setStatus] = useState<string | null>(null);
   const [resultSignature, setResultSignature] = useState<string | null>(null);
@@ -197,7 +170,7 @@ export function TokenLaunch({
 
   useEffect(() => {
     if (!passportReady || !agentPassportImageUrl) return;
-    if (passportImageDataUrl || imageFile) return;
+    if (passportImageDataUrl) return;
 
     let cancelled = false;
     (async () => {
@@ -227,7 +200,7 @@ export function TokenLaunch({
     return () => {
       cancelled = true;
     };
-  }, [passportReady, agentPassportImageUrl, passportImageDataUrl, imageFile]);
+  }, [passportReady, agentPassportImageUrl, passportImageDataUrl]);
 
   const walletMismatch =
     publicKey &&
@@ -246,30 +219,26 @@ export function TokenLaunch({
     if (tokenName.trim().length < 2) return null;
     if (tokenSymbol.trim().length < 2) return null;
     if (description.trim().length < 10) return null;
-    if (provider === "pumpportal" && imageFile && imageFile.size > MAX_IMAGE_BYTES) {
-      return "Image must be 4 MB or smaller.";
-    }
     return null;
-  }, [
-    description,
-    existingTokenMint,
-    imageFile,
-    provider,
-    tokenName,
-    tokenSymbol,
-  ]);
+  }, [description, existingTokenMint, tokenName, tokenSymbol]);
 
-  const hasLaunchImage =
-    provider !== "pumpportal" || Boolean(imageFile) || Boolean(passportImageDataUrl);
+  const passportBlocker = !passportReady
+    ? "Generate the agent's passport image before launching the token."
+    : !passportImageDataUrl && passportImageError
+      ? passportImageError
+      : !passportImageDataUrl
+        ? "Loading passport image..."
+        : null;
 
   const canLaunch =
     !existingTokenMint &&
     tokenName.trim().length >= 2 &&
     tokenSymbol.trim().length >= 2 &&
     description.trim().length >= 10 &&
-    hasLaunchImage &&
+    Boolean(passportImageDataUrl) &&
     !validationError &&
     !launchDisabledReason &&
+    !passportBlocker &&
     step === "idle";
 
   const handleLaunch = async () => {
@@ -290,131 +259,49 @@ export function TokenLaunch({
     setResultSignature(null);
 
     try {
-      const mintKeypair = Keypair.generate();
-      const gateThreshold = Number(tokenGateThreshold || "0");
-
-      if (provider === "pumpportal") {
-        let imageDataUrl: string | null = null;
-        if (passportImageDataUrl) {
-          imageDataUrl = passportImageDataUrl;
-        } else if (imageFile) {
-          imageDataUrl = await fileToDataUrl(imageFile);
-        }
-        if (!imageDataUrl) {
-          throw new Error("Token image is required to launch this agent.");
-        }
-
-        setStep("preparing");
-        const prepareResponse = await fetch(
-          `/api/agents/${agentId}/launch-token`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "prepare",
-              provider,
-              walletPublicKey: publicKey.toBase58(),
-              mintPublicKey: mintKeypair.publicKey.toBase58(),
-              tokenName,
-              tokenSymbol,
-              description,
-              imageDataUrl,
-              devBuySol: 0.01,
-              tokenGateThreshold: gateThreshold,
-            }),
-          },
-        );
-
-        const prepared = await prepareResponse.json();
-        if (!prepareResponse.ok) {
-          throw new Error(prepared.error || "Failed to prepare launch");
-        }
-
-        setStep("signing");
-        const tx = VersionedTransaction.deserialize(
-          base64ToBytes(prepared.serializedTransactionBase64),
-        );
-        tx.sign([mintKeypair]);
-        const signedTx = await signTransaction(tx);
-
-        setStep("confirming");
-        const signature = await connection.sendRawTransaction(
-          signedTx.serialize(),
-        );
-        await connection.confirmTransaction(signature, "confirmed");
-
-        const confirmResponse = await fetch(
-          `/api/agents/${agentId}/launch-token`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "confirm",
-              provider,
-              walletPublicKey: publicKey.toBase58(),
-              mintPublicKey: mintKeypair.publicKey.toBase58(),
-              tokenName,
-              tokenSymbol,
-              metadataUri: prepared.metadataUri,
-              signature,
-              tokenGateThreshold: gateThreshold,
-            }),
-          },
-        );
-
-        const confirmed = await confirmResponse.json();
-        if (!confirmResponse.ok) {
-          throw new Error(confirmed.error || "Failed to confirm launch");
-        }
-
-        setStep("done");
-        setResultSignature(signature);
-        setStatus("Token launched.");
-        router.refresh();
-        return;
+      if (!passportImageDataUrl) {
+        throw new Error("Passport image is required to launch this agent.");
       }
 
-      // Direct SPL flow
+      const mintKeypair = Keypair.generate();
+
       setStep("preparing");
-      const decimals = 6;
-      const lamports = await connection.getMinimumBalanceForRentExemption(
-        MINT_SIZE,
+      const prepareResponse = await fetch(
+        `/api/agents/${agentId}/launch-token`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "prepare",
+            provider,
+            walletPublicKey: publicKey.toBase58(),
+            mintPublicKey: mintKeypair.publicKey.toBase58(),
+            tokenName,
+            tokenSymbol,
+            description,
+            imageDataUrl: passportImageDataUrl,
+            devBuySol: 0.01,
+            tokenGateThreshold,
+          }),
+        },
       );
-      const mint = mintKeypair.publicKey;
-      const owner = publicKey;
-      const destinationAta = getAssociatedTokenAddressSync(mint, owner);
-      const transaction = new Transaction().add(
-        SystemProgram.createAccount({
-          fromPubkey: owner,
-          newAccountPubkey: mint,
-          lamports,
-          space: MINT_SIZE,
-          programId: TOKEN_PROGRAM_ID,
-        }),
-        createInitializeMintInstruction(mint, decimals, owner, owner),
-        createAssociatedTokenAccountInstruction(
-          owner,
-          destinationAta,
-          owner,
-          mint,
-        ),
-        createMintToInstruction(
-          mint,
-          destinationAta,
-          owner,
-          BigInt(directSupply) * 10n ** BigInt(decimals),
-        ),
-      );
-      transaction.feePayer = owner;
-      const { blockhash } = await connection.getLatestBlockhash("confirmed");
-      transaction.recentBlockhash = blockhash;
-      transaction.partialSign(mintKeypair);
+
+      const prepared = await prepareResponse.json();
+      if (!prepareResponse.ok) {
+        throw new Error(prepared.error || "Failed to prepare launch");
+      }
 
       setStep("signing");
-      const signed = await signTransaction(transaction);
+      const tx = VersionedTransaction.deserialize(
+        base64ToBytes(prepared.serializedTransactionBase64),
+      );
+      tx.sign([mintKeypair]);
+      const signedTx = await signTransaction(tx);
 
       setStep("confirming");
-      const signature = await connection.sendRawTransaction(signed.serialize());
+      const signature = await connection.sendRawTransaction(
+        signedTx.serialize(),
+      );
       await connection.confirmTransaction(signature, "confirmed");
 
       const confirmResponse = await fetch(
@@ -426,23 +313,24 @@ export function TokenLaunch({
             action: "confirm",
             provider,
             walletPublicKey: publicKey.toBase58(),
-            mintPublicKey: mint.toBase58(),
+            mintPublicKey: mintKeypair.publicKey.toBase58(),
             tokenName,
             tokenSymbol,
+            metadataUri: prepared.metadataUri,
             signature,
-            tokenGateThreshold: gateThreshold,
+            tokenGateThreshold,
           }),
         },
       );
 
       const confirmed = await confirmResponse.json();
       if (!confirmResponse.ok) {
-        throw new Error(confirmed.error || "Failed to confirm SPL launch");
+        throw new Error(confirmed.error || "Failed to confirm launch");
       }
 
       setStep("done");
       setResultSignature(signature);
-      setStatus("SPL token launched.");
+      setStatus("Token launched.");
       router.refresh();
     } catch (error) {
       setStep("idle");
@@ -571,47 +459,7 @@ export function TokenLaunch({
             className="h-24 w-full border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
           />
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <select
-              value={provider}
-              onChange={(event) =>
-                setProvider(event.target.value as "pumpportal" | "direct_spl")
-              }
-              disabled={Boolean(launchDisabledReason) || step !== "idle"}
-              className="border border-ghost-gray/20 bg-void-black px-4 py-3 font-mono text-xs uppercase tracking-[0.08em] text-neural-white/65 outline-none sm:tracking-[0.12em]"
-            >
-              <option value="pumpportal">Bonding curve</option>
-              <option value="direct_spl">Direct mint</option>
-            </select>
-            <input
-              value={tokenGateThreshold}
-              onChange={(event) => setTokenGateThreshold(event.target.value)}
-              placeholder="Gate threshold"
-              disabled={Boolean(launchDisabledReason) || step !== "idle"}
-              className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
-            />
-            {provider === "direct_spl" ? (
-              <input
-                value={directSupply}
-                onChange={(event) => setDirectSupply(event.target.value)}
-                placeholder="Initial supply"
-                disabled={Boolean(launchDisabledReason) || step !== "idle"}
-                className="border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none"
-              />
-            ) : (
-              <div className="flex items-center border border-ghost-gray/20 bg-void-black px-4 py-3 font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/55 sm:tracking-[0.12em]">
-                {passportImageDataUrl
-                  ? "Logo: passport image"
-                  : passportReady
-                    ? "Loading passport..."
-                    : imageFile
-                      ? `Logo: ${imageFile.name.slice(0, 24)}`
-                      : "Logo: awaiting passport"}
-              </div>
-            )}
-          </div>
-
-          {provider === "pumpportal" && passportImageDataUrl ? (
+          {passportImageDataUrl ? (
             <div className="flex items-center gap-3 border border-pulse-cyan/20 bg-pulse-cyan/5 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -623,39 +471,14 @@ export function TokenLaunch({
                 <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-pulse-cyan sm:tracking-[0.12em]">
                   Passport image attached as token logo
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setShowImageOverride((value) => !value)}
-                  disabled={Boolean(launchDisabledReason) || step !== "idle"}
-                  className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-neural-white/40 hover:text-neural-white/70 sm:tracking-[0.12em]"
-                >
-                  {showImageOverride ? "Cancel override" : "Override with custom image"}
-                </button>
               </div>
             </div>
-          ) : null}
-
-          {provider === "pumpportal" && passportImageError && !passportImageDataUrl ? (
-            <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ember-orange sm:tracking-[0.12em]">
-              {passportImageError} — upload a custom logo below.
-            </p>
-          ) : null}
-
-          {provider === "pumpportal" && (!passportImageDataUrl || showImageOverride) ? (
-            <input
-              type="file"
-              accept="image/*"
-              disabled={Boolean(launchDisabledReason) || step !== "idle"}
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                setImageFile(file);
-                if (file) {
-                  setPassportImageDataUrl(null);
-                  setShowImageOverride(false);
-                }
-              }}
-              className="w-full border border-ghost-gray/20 bg-void-black px-4 py-3 text-sm text-neural-white/75 outline-none file:mr-3 file:border-0 file:bg-transparent file:font-mono file:text-xs file:uppercase file:tracking-[0.08em] file:text-neural-white/50 sm:file:tracking-[0.12em]"
-            />
+          ) : passportBlocker ? (
+            <div className="border border-ember-orange/30 bg-ember-orange/5 p-3">
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ember-orange sm:tracking-[0.12em]">
+                {passportBlocker}
+              </p>
+            </div>
           ) : null}
 
           <div className="border border-ghost-gray/20 bg-void-black p-3">

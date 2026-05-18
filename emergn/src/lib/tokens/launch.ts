@@ -65,7 +65,7 @@ function dataUrlToFile(dataUrl: string, fileName: string) {
   return new File([buffer], fileName, { type: mime });
 }
 
-async function uploadMetadataAsset(file: File, jwt: string) {
+async function uploadMetadataAsset(file: File, jwt: string, label: string) {
   const formData = new FormData();
   formData.append("network", "public");
   formData.append("file", file);
@@ -80,14 +80,18 @@ async function uploadMetadataAsset(file: File, jwt: string) {
 
   if (!response.ok) {
     const message = await response.text();
-    console.error("Token metadata asset upload failed:", message || response.statusText);
-    throw new Error("Token metadata upload failed");
+    console.error(
+      `[launch] metadata asset upload failed (${label}, status ${response.status}):`,
+      message || response.statusText,
+    );
+    throw new Error(`Token ${label} upload failed (${response.status})`);
   }
 
   const payload = (await response.json()) as { data?: { cid?: string } };
   const cid = payload.data?.cid;
   if (!cid) {
-    throw new Error("Token metadata upload returned no CID");
+    console.error(`[launch] metadata asset upload returned no CID (${label})`);
+    throw new Error(`Token ${label} upload returned no CID`);
   }
 
   return `https://ipfs.io/ipfs/${cid}`;
@@ -117,7 +121,7 @@ async function uploadMetadata(options: {
     { type: "application/json" }
   );
 
-  return uploadMetadataAsset(metadataFile, options.jwt);
+  return uploadMetadataAsset(metadataFile, options.jwt, "metadata");
 }
 
 export async function prepareAgentTokenLaunch(
@@ -138,7 +142,7 @@ export async function prepareAgentTokenLaunch(
     input.imageDataUrl,
     `${input.tokenSymbol.toLowerCase()}-token.png`
   );
-  const imageUri = await uploadMetadataAsset(imageFile, metadataJwt);
+  const imageUri = await uploadMetadataAsset(imageFile, metadataJwt, "image");
   const metadataUri = await uploadMetadata({
     jwt: metadataJwt,
     tokenName: input.tokenName,
@@ -171,8 +175,13 @@ export async function prepareAgentTokenLaunch(
 
   if (!response.ok) {
     const message = await response.text();
-    console.error("Agent token launch preparation failed:", message || response.statusText);
-    throw new Error("Agent token launch preparation failed");
+    console.error(
+      `[launch] transaction prep failed (status ${response.status}):`,
+      message || response.statusText,
+    );
+    throw new Error(
+      `Agent token transaction preparation failed (${response.status})`,
+    );
   }
 
   const arrayBuffer = await response.arrayBuffer();
