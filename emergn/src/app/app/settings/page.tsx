@@ -31,25 +31,39 @@ export default async function SettingsPage() {
   const supabase = await createClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
+  if (userError || !user) {
+    console.error("[settings] no authenticated user:", userError);
+    throw new Error("Not authenticated");
+  }
+
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user!.id)
+    .eq("id", user.id)
     .maybeSingle();
+
+  if (profileError) {
+    console.error("[settings] profile fetch failed:", profileError);
+  }
 
   // Fetch the viewer's agents + each agent's passport row. The relationship
   // is 1:N in schema but practically 1:1 (one passport per agent), so we pick
   // the most recent issued passport when rendering.
-  const { data: agentsRaw } = await supabase
+  const { data: agentsRaw, error: agentsError } = await supabase
     .from("agents")
     .select(
       `id, name, codename, archetype, passport_image_url, passport_image_status,
        agent_passports(passport_uid, status, issued_at)`,
     )
-    .eq("owner_id", user!.id)
+    .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
+
+  if (agentsError) {
+    console.error("[settings] agents fetch failed:", agentsError);
+  }
 
   const passports = ((agentsRaw ?? []) as AgentWithPassport[]).map((agent) => {
     const issued = (agent.agent_passports ?? []).find(
@@ -69,8 +83,29 @@ export default async function SettingsPage() {
     };
   });
 
-  const admin = createAdminClient();
-  const viewerIsAdmin = await isAdmin(admin, { user });
+  let viewerIsAdmin = false;
+  try {
+    const admin = createAdminClient();
+    viewerIsAdmin = await isAdmin(admin, { user });
+  } catch (error) {
+    console.error("[settings] admin check failed:", error);
+  }
+
+  if (!profile) {
+    console.error("[settings] profile row missing for user:", user.id);
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-8">
+          <h1 className="font-headline text-2xl font-bold uppercase tracking-[0.08em] text-neural-white sm:tracking-[0.1em]">
+            Settings
+          </h1>
+          <p className="mt-1 font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-ember-orange/80 sm:tracking-[0.1em]">
+            Profile not initialized yet — please reload, or sign out and back in.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl">
