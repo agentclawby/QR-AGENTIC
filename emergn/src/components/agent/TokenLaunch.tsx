@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Keypair, VersionedTransaction } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/Button";
+import { TokenAddressChip } from "@/components/agent/TokenAddressChip";
 import type { AgentToken } from "@/types";
 
 interface TokenLaunchProps {
@@ -504,18 +505,14 @@ export function TokenLaunch({
       </div>
 
       {launched ? (
-        <div className="space-y-2 border border-pulse-cyan/30 bg-pulse-cyan/5 p-4 font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-neural-white/55 sm:tracking-[0.12em]">
-          <p className="break-all">Mint: {agentToken!.token_mint}</p>
-          {agentToken!.launch_tx ? (
-            <a
-              href={`https://solscan.io/tx/${agentToken!.launch_tx}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-pulse-cyan hover:text-pulse-cyan/80"
-            >
-              View launch tx on Solscan ↗
-            </a>
-          ) : null}
+        <div className="space-y-3 border border-pulse-cyan/30 bg-pulse-cyan/5 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-pulse-cyan">
+            Live on chain — tradeable on Pump.fun
+          </p>
+          <TokenAddressChip
+            mint={agentToken!.token_mint}
+            launchTx={agentToken!.launch_tx}
+          />
         </div>
       ) : (
         <div className="space-y-3">
