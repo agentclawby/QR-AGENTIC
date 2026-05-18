@@ -24,15 +24,26 @@ export default async function AppLayout({
   let viewerIsAdmin = false;
 
   if (user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    profile = (data ?? null) as Profile | null;
+    try {
+      const { data, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (profileError) {
+        console.error("[layout] profile fetch failed:", profileError);
+      }
+      profile = (data ?? null) as Profile | null;
+    } catch (error) {
+      console.error("[layout] profile fetch threw:", error);
+    }
 
-    const admin = createAdminClient();
-    viewerIsAdmin = await isAdmin(admin, { user });
+    try {
+      const admin = createAdminClient();
+      viewerIsAdmin = await isAdmin(admin, { user });
+    } catch (error) {
+      console.error("[layout] admin check threw:", error);
+    }
   }
 
   return (
