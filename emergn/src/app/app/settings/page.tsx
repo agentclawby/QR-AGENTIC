@@ -11,23 +11,8 @@ export const metadata = {
   title: "Settings — EMERGN.",
 };
 
-interface AgentWithPassport {
-  id: string;
-  name: string;
-  codename: string;
-  archetype: string;
-  passport_image_url: string | null;
-  passport_image_status: "pending" | "generating" | "ready" | "failed" | null;
-  agent_passports:
-    | {
-        passport_uid: string;
-        status: "issued" | "revoked";
-        issued_at: string;
-      }[]
-    | null;
-}
-
 export default async function SettingsPage() {
+  console.log("[settings] render start");
   const supabase = await createClient();
   const {
     data: { user },
@@ -39,6 +24,8 @@ export default async function SettingsPage() {
     throw new Error("Not authenticated");
   }
 
+  console.log("[settings] user resolved:", user.id);
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
@@ -49,15 +36,14 @@ export default async function SettingsPage() {
     console.error("[settings] profile fetch failed:", profileError);
   }
 
-  // Fetch the viewer's agents + each agent's passport row. The relationship
-  // is 1:N in schema but practically 1:1 (one passport per agent), so we pick
-  // the most recent issued passport when rendering.
-  const { data: agentsRaw, error: agentsError } = await supabase
+  console.log("[settings] profile fetched:", Boolean(profile));
+
+  // Fetch agents and passports as separate queries — the previous joined
+  // select had a `agent_passports(...)` relation embed which can fail
+  // silently if the FK or RLS isn't aligned. Splitting them isolates failures.
+  const { data: agentsList, error: agentsError } = await supabase
     .from("agents")
-    .select(
-      `id, name, codename, archetype, passport_image_url, passport_image_status,
-       agent_passports(passport_uid, status, issued_at)`,
-    )
+    .select("id, name, codename, archetype, passport_image_url, passport_image_status")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -65,16 +51,48 @@ export default async function SettingsPage() {
     console.error("[settings] agents fetch failed:", agentsError);
   }
 
-  const passports = ((agentsRaw ?? []) as AgentWithPassport[]).map((agent) => {
-    const issued = (agent.agent_passports ?? []).find(
-      (p) => p.status === "issued",
+  console.log("[settings] agents fetched:", agentsList?.length ?? 0);
+
+  let passportsByAgent: Record<
+    string,
+    { passport_uid: string; status: "issued" | "revoked"; issued_at: string }[]
+  > = {};
+
+  if (agentsList && agentsList.length > 0) {
+    const agentIds = agentsList.map((a) => a.id);
+    const { data: passportRows, error: passportError } = await supabase
+      .from("agent_passports")
+      .select("agent_id, passport_uid, status, issued_at")
+      .in("agent_id", agentIds);
+
+    if (passportError) {
+      console.error("[settings] passport fetch failed:", passportError);
+    }
+
+    passportsByAgent = (passportRows ?? []).reduce(
+      (acc, row) => {
+        const list = acc[row.agent_id] ?? [];
+        list.push({
+          passport_uid: row.passport_uid,
+          status: row.status,
+          issued_at: row.issued_at,
+        });
+        acc[row.agent_id] = list;
+        return acc;
+      },
+      {} as typeof passportsByAgent,
     );
-    const latest = (agent.agent_passports ?? [])[0];
+  }
+
+  const passports = (agentsList ?? []).map((agent) => {
+    const rows = passportsByAgent[agent.id] ?? [];
+    const issued = rows.find((p) => p.status === "issued");
+    const latest = rows[0];
     return {
       agent_id: agent.id,
-      agent_name: agent.name,
-      agent_codename: agent.codename,
-      archetype: agent.archetype,
+      agent_name: agent.name ?? "Unnamed agent",
+      agent_codename: agent.codename ?? "",
+      archetype: agent.archetype ?? "GHOST",
       passport_image_url: agent.passport_image_url,
       passport_image_status: agent.passport_image_status ?? "pending",
       passport_status: (issued ?? latest)?.status ?? null,
@@ -82,6 +100,8 @@ export default async function SettingsPage() {
       issued_at: (issued ?? latest)?.issued_at ?? null,
     };
   });
+
+  console.log("[settings] passports mapped:", passports.length);
 
   let viewerIsAdmin = false;
   try {
