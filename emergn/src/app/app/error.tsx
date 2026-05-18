@@ -27,12 +27,10 @@ export default function AppError({
         or fall back to the network.
       </p>
 
-      {process.env.NODE_ENV !== "production" && (
-        <pre className="mb-6 max-w-xl overflow-x-auto border border-ghost-gray/30 bg-ghost-gray/10 p-3 text-left font-mono text-[10px] text-neural-white/60">
-          {error.message}
-          {error.digest ? `\n\ndigest: ${error.digest}` : ""}
-        </pre>
-      )}
+      <pre className="mb-6 max-w-xl overflow-x-auto border border-ghost-gray/30 bg-ghost-gray/10 p-3 text-left font-mono text-[10px] text-neural-white/60">
+        {error.message}
+        {error.digest ? `\n\ndigest: ${error.digest}` : ""}
+      </pre>
 
       <div className="flex gap-3">
         <Button variant="primary" size="md" onClick={reset}>
