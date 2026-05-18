@@ -453,6 +453,14 @@ body {
 
 /* ═══════════════════════════════════════════════
    Reduced Motion
+
+   Honors the OS-level "Reduce motion" preference. CSS animations and
+   transitions are collapsed to ~instant, and our looping decorative effects
+   (scanlines, aurora, data streams, particles, ticker) are hidden entirely
+   so a vestibular-sensitive user doesn't get an empty-but-still-moving
+   shell. Framer Motion's JS-driven animations need per-component handling
+   via `useReducedMotion()` — track those component-by-component as we
+   touch animated screens.
    ═══════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -462,5 +470,17 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Hide purely decorative auto-running effects entirely. These are visual
+     flair, not content — safer to suppress than to half-animate. */
+  .scanline-overlay,
+  .data-stream,
+  .particle-field,
+  .aurora-backdrop,
+  .marquee,
+  .ticker,
+  [data-decorative-motion] {
+    display: none !important;
   }
 }

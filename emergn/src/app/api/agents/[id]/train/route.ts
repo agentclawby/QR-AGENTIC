@@ -23,6 +23,7 @@ import {
 } from "@/lib/usage";
 import {
   checkUserRateLimit,
+  rateLimitHeaders,
   rateLimitMetadata,
   RateLimitedError,
 } from "@/lib/rate-limit";
@@ -58,7 +59,8 @@ export async function POST(
 
     const body = trainSchema.parse(await request.json());
 
-    await checkUserRateLimit(admin, user.id, "train");
+    const limitInfo = await checkUserRateLimit(admin, user.id, "train");
+    const limitResponseHeaders = rateLimitHeaders(limitInfo);
     await assertUsageWithinLimit(admin, user.id, "trainings");
 
     const [{ data: agent }, { data: module }, { data: scores }] = await Promise.all([
@@ -211,13 +213,16 @@ export async function POST(
     await recordUsage(admin, user.id, "trainings", 1);
     await recordUsage(admin, user.id, "anthropic_tokens", 3500);
 
-    return NextResponse.json({
-      success: true,
-      sessionId: session?.id,
-      overlay: training.overlay,
-      summary: training.summary,
-      credits,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        sessionId: session?.id,
+        overlay: training.overlay,
+        summary: training.summary,
+        credits,
+      },
+      { headers: limitResponseHeaders },
+    );
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
       return NextResponse.json({ error: error.message }, { status: 402 });
@@ -235,7 +240,13 @@ export async function POST(
             error.retryAfterSeconds / 60
           )} minutes.`,
         },
-        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } }
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(error.retryAfterSeconds),
+            "RateLimit-Reset": String(error.retryAfterSeconds),
+          },
+        }
       );
     }
     console.error("Training error:", error);

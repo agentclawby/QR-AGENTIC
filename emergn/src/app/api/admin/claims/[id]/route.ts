@@ -7,6 +7,7 @@ import {
   recordAdminAudit,
   requireAdmin,
 } from "@/lib/admin";
+import { enforceAdminOrigin } from "@/lib/api/admin-guard";
 import { awardActionCredits, EarnCapReachedError } from "@/lib/credits";
 
 const decisionSchema = z.object({
@@ -18,6 +19,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const originDenied = enforceAdminOrigin(request);
+  if (originDenied) return originDenied;
+
   try {
     const { id: claimId } = await params;
     const supabase = await createClient();

@@ -8,6 +8,7 @@ import { buildWalletPortfolioSnapshot } from "@/lib/portfolio/analyzer";
 import { generatePortfolioAnalysis } from "@/lib/ai/agent-portfolio";
 import {
   checkUserRateLimit,
+  rateLimitHeaders,
   rateLimitMetadata,
   RateLimitedError,
 } from "@/lib/rate-limit";
@@ -42,7 +43,8 @@ export async function POST(
 
     const body = portfolioSchema.parse(await request.json().catch(() => ({})));
 
-    await checkUserRateLimit(admin, user.id, "portfolio");
+    const limitInfo = await checkUserRateLimit(admin, user.id, "portfolio");
+    const limitResponseHeaders = rateLimitHeaders(limitInfo);
 
     const [{ data: agent }, { data: profile }] = await Promise.all([
       admin.from("agents").select("*").eq("id", agentId).single(),
@@ -109,12 +111,15 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      walletAddress,
-      snapshot,
-      analysis,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        walletAddress,
+        snapshot,
+        analysis,
+      },
+      { headers: limitResponseHeaders },
+    );
   } catch (error) {
     if (error instanceof RateLimitedError) {
       return NextResponse.json(
@@ -123,7 +128,13 @@ export async function POST(
             error.retryAfterSeconds / 60
           )} minutes.`,
         },
-        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } }
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(error.retryAfterSeconds),
+            "RateLimit-Reset": String(error.retryAfterSeconds),
+          },
+        }
       );
     }
     console.error("Portfolio analysis error:", error);

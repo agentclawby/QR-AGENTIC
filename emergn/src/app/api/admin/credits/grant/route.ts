@@ -7,6 +7,7 @@ import {
   recordAdminAudit,
   requireAdmin,
 } from "@/lib/admin";
+import { enforceAdminOrigin } from "@/lib/api/admin-guard";
 import {
   ensureUserCreditBalance,
   grantActionCredits,
@@ -26,6 +27,9 @@ const grantSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const originDenied = enforceAdminOrigin(request);
+  if (originDenied) return originDenied;
+
   try {
     const supabase = await createClient();
     const admin = createAdminClient();

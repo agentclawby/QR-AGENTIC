@@ -7,6 +7,7 @@ import {
   recordAdminAudit,
   requireAdmin,
 } from "@/lib/admin";
+import { enforceAdminOrigin } from "@/lib/api/admin-guard";
 
 const suspendSchema = z.object({
   suspended: z.boolean(),
@@ -17,6 +18,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const originDenied = enforceAdminOrigin(request);
+  if (originDenied) return originDenied;
+
   try {
     const { id: targetUserId } = await params;
     const supabase = await createClient();
