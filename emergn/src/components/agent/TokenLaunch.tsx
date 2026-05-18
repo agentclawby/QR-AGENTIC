@@ -268,19 +268,36 @@ export function TokenLaunch({
         }
       }
 
-      // Fallback: render a clean EMERGN.-branded canvas logo from agent
-      // identity. Guarantees the launch is never blocked by a missing image.
-      const fallback = renderFallbackLogoDataUrl(
+      // Fallback 2: render a clean EMERGN.-branded canvas logo client-side.
+      const canvasFallback = renderFallbackLogoDataUrl(
         agentName ?? "",
         agentCodename ?? "",
         (agentArchetype ?? "GHOST").toUpperCase(),
       );
-      if (!cancelled && fallback) {
-        setPassportImageDataUrl(fallback);
+      if (!cancelled && canvasFallback) {
+        setPassportImageDataUrl(canvasFallback);
         setLogoSource("fallback");
         setPassportImageError(null);
-      } else if (!cancelled) {
-        setPassportImageError("Could not prepare a token logo");
+        return;
+      }
+
+      // Fallback 3: server-side rendered PNG (in case canvas is unavailable —
+      // e.g. older browsers, headless contexts). Always succeeds.
+      try {
+        const response = await fetch(`/api/agents/${agentId}/launch-logo`);
+        if (!response.ok) throw new Error("server logo render failed");
+        const blob = await response.blob();
+        const dataUrl = await blobToDataUrl(blob);
+        if (!cancelled) {
+          setPassportImageDataUrl(dataUrl);
+          setLogoSource("fallback");
+          setPassportImageError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("[launch] all logo fallbacks failed", error);
+          setPassportImageError("Could not prepare a token logo");
+        }
       }
     })();
 
@@ -290,6 +307,7 @@ export function TokenLaunch({
   }, [
     agentArchetype,
     agentCodename,
+    agentId,
     agentName,
     agentPassportImageUrl,
     passportImageDataUrl,
